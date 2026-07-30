@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 10 · Productionizing &amp; alerting - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 10 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 10 of 10</div>
+    <h1>Productionizing &amp; alerting: <span class="accent">shipping a detector people trust</span></h1>
+    <p class="sub">A detector that scores well in a notebook is worth nothing until it runs on live data without crying wolf. This capstone turns the b3 rolling detector into an online streaming detector, wraps it in an alerting layer that deduplicates, prioritises, and routes, closes the feedback loop so on-call dispositions tune the threshold, watches for concept drift by monitoring the detector's own precision, and keeps a human in the loop for high-stakes calls. This is where the whole track lands: a system the analyst from b1 would actually rely on.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · a notebook</span>
+      <span class="chip time">Final session · capstone</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Streaming + alerting</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: stream + drift</span>
+      <span class="a4" style="flex:1">42-45 · Wrap</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>From notebook to on-call pager</h2>
+    </div>
+    <p class="lede">Nine sessions built and measured detectors on a fixed series sitting still in memory. Production is different in every way that matters: points arrive one at a time, latency counts, the baseline drifts, and a false alarm is not a number on a chart but a human woken at 3am. Tonight we ship. We make the detector <em>streaming</em> so it scores each new point online against a rolling baseline; we build the <em>alerting</em> layer that turns raw flags into one trustworthy page per incident; we wire the <em>feedback loop</em> so the people who answer those pages teach the threshold what a real anomaly looks like; and we <em>monitor the detector itself</em> for drift, because "normal" never stops moving. The single enemy the whole time is alert fatigue - the moment the team mutes you, your recall is effectively zero no matter what the offline score said.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A streaming detector that scores points as they arrive against a rolling baseline, with deduplication so one incident is one alert; an alerting layer with severity and routing; a feedback loop that turns on-call dispositions into a rolling precision the threshold can learn from; a drift monitor that raises a retrain flag before alert fatigue sets in; and the guardrail habit of keeping a human between a detector and any high-stakes action.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: STREAMING + ALERTING PIPELINE ============ -->
+  <section class="section" id="pipeline">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the serving pipeline</span>
+      <h2>Score online, alert once, close the loop <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">A production detector is a loop, not a script. Each new point is scored against a rolling or seasonal baseline that travels with the data; if it crosses the band, the flag enters an alerting layer that deduplicates a burst into one incident, tags severity, and routes it to the right on-call. The responder's verdict - real or false alarm - flows back as a label that tunes the threshold and feeds the next retrain. And before any automated high-stakes action, a guardrail gate hands off to a human.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A closed-loop pipeline: a new point is scored against a rolling baseline, passed through a threshold, deduplicated and routed by severity to an on-call responder, whose real-or-false disposition feeds back to tune the threshold and retrain, with a guardrail gate holding high-stakes actions for a human">
+        <style>
+          .b0pT { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .b0pI { font: 700 12px Inter, sans-serif; fill: #1F2937; }
+          .b0pX { font: 400 11px Inter, sans-serif; fill: #6B7280; }
+          .b0pN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+          .b0pA { font: 700 12px Inter, sans-serif; fill: #374151; }
+        </style>
+        <text class="b0pI" x="24" y="26">The detector is a closed loop, not a one-shot script</text>
+        <!-- row 1 boxes -->
+        <rect x="24" y="52" width="104" height="52" rx="10" fill="#4B5563"/>
+        <text class="b0pT" x="43" y="76">New point</text><text class="b0pT" x="43" y="94" style="fill:#E5E7EB">arrives live</text>
+        <rect x="150" y="52" width="150" height="52" rx="10" fill="#374151"/>
+        <text class="b0pT" x="168" y="76">Score vs</text><text class="b0pT" x="168" y="94">rolling baseline</text>
+        <rect x="322" y="52" width="104" height="52" rx="10" fill="#374151"/>
+        <text class="b0pT" x="340" y="76">Threshold</text><text class="b0pT" x="340" y="94" style="fill:#E5E7EB">band cross?</text>
+        <rect x="448" y="52" width="150" height="52" rx="10" fill="#DC2626"/>
+        <text class="b0pT" x="466" y="76">Dedup + route</text><text class="b0pT" x="466" y="94">+ severity</text>
+        <rect x="620" y="52" width="120" height="52" rx="10" fill="#7F1D1D"/>
+        <text class="b0pT" x="638" y="76">On-call</text><text class="b0pT" x="638" y="94">responder</text>
+        <!-- arrows row 1 -->
+        <g stroke="#D1D5DB" stroke-width="2" fill="#D1D5DB">
+          <line x1="128" y1="78" x2="146" y2="78"/><polygon points="146,74 154,78 146,82"/>
+          <line x1="300" y1="78" x2="318" y2="78"/><polygon points="318,74 326,78 318,82"/>
+          <line x1="426" y1="78" x2="444" y2="78"/><polygon points="444,74 452,78 444,82"/>
+          <line x1="598" y1="78" x2="616" y2="78"/><polygon points="616,74 624,78 616,82"/>
+        </g>
+        <!-- guardrail gate below dedup -->
+        <rect x="448" y="140" width="150" height="52" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b0pI" x="466" y="164">Guardrail gate</text><text class="b0pX" x="466" y="182">human-in-loop</text>
+        <g stroke="#D1D5DB" stroke-width="2" fill="#D1D5DB">
+          <line x1="523" y1="104" x2="523" y2="136"/><polygon points="519,136 523,144 527,136"/>
+        </g>
+        <text class="b0pX" x="606" y="172">high-stakes action</text>
+        <text class="b0pX" x="606" y="188">held for a human</text>
+        <!-- feedback path: on-call disposition down and back to score -->
+        <rect x="150" y="238" width="240" height="52" rx="10" fill="#1F2937"/>
+        <text class="b0pT" x="168" y="262">Tune threshold / retrain</text>
+        <text class="b0pX" x="168" y="280" style="fill:#FEE2E2">disposition: real / false alarm</text>
+        <g stroke="#DC2626" stroke-width="2" fill="#DC2626">
+          <!-- on-call down, left to tune box -->
+          <polyline points="680,104 680,264 392,264" fill="none"/><polygon points="392,260 384,264 392,268"/>
+          <!-- tune box up to score box -->
+          <polyline points="225,238 225,110" fill="none"/><polygon points="221,110 225,102 229,110"/>
+        </g>
+        <text class="b0pA" x="446" y="258">real / false label</text>
+        <text class="b0pA" x="446" y="274">feeds back</text>
+        <rect x="24" y="312" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b0pN" x="46" y="324">Dedup makes one incident one alert; the feedback label is what keeps the threshold honest over time.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the streaming detector as a closed loop with a guardrail gate</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The four jobs of the alerting layer<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Raw flags are not alerts. Between the detector and the pager sits a layer that does four things, and skipping any one of them is how a good detector still gets muted:</p>
+        <ul>
+          <li><strong>Deduplicate</strong> - a three-day bot surge is one incident, not three pages. A cooldown or suppression window collapses a burst into a single alert with a running count.</li>
+          <li><strong>Prioritise</strong> - severity from how far past the band, and from what the metric feeds. A checkout-flow drop is a page; a blog-traffic wobble is a ticket.</li>
+          <li><strong>Route</strong> - the right on-call for the right system, with escalation if unacknowledged. An alert nobody owns is an alert nobody actions.</li>
+          <li><strong>Suppress</strong> - during known maintenance or a declared incident, mute to avoid a storm of redundant pages.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Alert fatigue kills more detectors than bad math.</strong> A detector that pages ten times a night for nine false alarms gets a mute rule within a week, and then it catches nothing - your real recall is zero regardless of the offline F1. Deduplication and a threshold tuned toward precision are not polish; they are what keeps the system alive.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>A streaming detector with deduplication <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Replay the Lumen series as a live stream, one point at a time. Maintain a rolling baseline, alert when a point leaves the band, and suppress repeat alerts inside a cooldown so one incident is one page.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the Lumen series and replay it point by point, as it would arrive in production.</p></div>
+      <div class="step"><p>Keep a fixed-size rolling window; score each new point before adding it to the baseline.</p></div>
+      <div class="step"><p>Emit an alert with a severity when a point crosses the band - but only if the cooldown has elapsed.</p></div>
+      <div class="step"><p>Confirm the collective run fires one deduplicated alert, not three.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - online streaming detector + dedup</span>import pandas as pd, numpy as np
+from collections import deque
+
+# --- rebuild the Lumen series (standalone) and replay it as a stream ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110])
+i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+y = y.astype(float)
+y[20] += 430; y[45] -= 380; y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+class StreamingDetector:
+    def __init__(self, window=14, k=3.5, cooldown=3):
+        self.buf = deque(maxlen=window)   # rolling baseline
+        self.k = k                        # band width in std devs
+        self.cooldown = cooldown          # suppression window (dedup)
+        self.since_alert = cooldown + 1   # allow the first alert
+
+    def update(self, ts, value):
+        self.since_alert += 1
+        alert = None
+        if len(self.buf) &gt;= self.buf.maxlen:
+            mu = np.mean(self.buf); sd = np.std(self.buf) or 1.0
+            z = (value - mu) / sd
+            if abs(z) &gt; self.k and self.since_alert &gt; self.cooldown:
+                sev = "high" if abs(z) &gt; 2 * self.k else "warn"
+                alert = {"ts": ts, "value": value, "z": round(z, 2), "severity": sev}
+                self.since_alert = 0      # open the suppression window
+        self.buf.append(value)            # baseline learns AFTER scoring
+        return alert
+
+det = StreamingDetector()
+alerts = [a for ts, v in s.items() if (a := det.update(ts, v)) is not None]
+for a in alerts:
+    print(a["ts"].date(), a["severity"].ljust(4), "z =", a["z"])
+print(f"\n{len(alerts)} deduplicated alerts (the 3-day run fired once)")</div>
+
+    <div class="callout tip">
+      <strong>Score before you learn</strong>
+      The baseline updates <em>after</em> the point is scored, never before - otherwise the anomaly contaminates the very baseline it is measured against and hides itself. This one-line ordering is the difference between an online detector that works and one that quietly goes blind during exactly the events you built it to catch.
+    </div>
+  </section>
+
+  <!-- ============ PART 2: FEEDBACK + DRIFT ============ -->
+  <section class="section" id="drift">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · feedback and drift</span>
+      <h2>Let the pager teach the threshold <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">A shipped detector is not done - "normal" drifts as the product grows, seasons turn, and traffic mix shifts, so a threshold that was precise in spring floods the pager by autumn. The fix is a feedback loop: every alert comes back marked real or false by the responder, and those precious labels become a rolling precision you watch like a vital sign. When it slides below a floor, you have caught alert fatigue <em>before</em> the team mutes you - time to re-tune the threshold or retrain.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line of rolling precision declining alert by alert, crossing below a floor line where a retrain is triggered, showing alert fatigue caught early">
+        <style>
+          .b0dT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b0dA { font: 600 12px Inter, sans-serif; fill: #4B5563; }
+          .b0dX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b0dN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+          .b0dW { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+        </style>
+        <text class="b0dT" x="24" y="26">Rolling precision, alert by alert - watched like a vital sign</text>
+        <!-- axes -->
+        <line x1="90" y1="60" x2="90" y2="240" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="90" y1="240" x2="560" y2="240" stroke="#D1D5DB" stroke-width="1.5"/>
+        <text class="b0dA" x="20" y="66">precision</text>
+        <text class="b0dX" x="70" y="64">1.0</text>
+        <text class="b0dX" x="70" y="244">0</text>
+        <text class="b0dA" x="440" y="262">alerts over time →</text>
+        <!-- floor line -->
+        <line x1="90" y1="150" x2="560" y2="150" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <text class="b0dX" x="470" y="145">floor = 0.5</text>
+        <!-- precision line (declining) -->
+        <polyline points="90,78 142,87 194,96 246,100 299,114 351,128 403,136 455,150 507,164 560,177"
+                  fill="none" stroke="#DC2626" stroke-width="2.5"/>
+        <!-- points; below-floor ones red -->
+        <g fill="#4B5563">
+          <circle cx="90" cy="78" r="4"/><circle cx="142" cy="87" r="4"/><circle cx="194" cy="96" r="4"/>
+          <circle cx="246" cy="100" r="4"/><circle cx="299" cy="114" r="4"/><circle cx="351" cy="128" r="4"/>
+          <circle cx="403" cy="136" r="4"/><circle cx="455" cy="150" r="4"/>
+        </g>
+        <g fill="#DC2626">
+          <circle cx="507" cy="164" r="5"/><circle cx="560" cy="177" r="5"/>
+        </g>
+        <!-- retrain trigger marker -->
+        <line x1="507" y1="164" x2="507" y2="240" stroke="#DC2626" stroke-width="1.4" stroke-dasharray="3 3"/>
+        <text class="b0dN" x="452" y="258">retrain triggered</text>
+        <!-- right panel -->
+        <rect x="596" y="66" width="260" height="150" rx="12" fill="#1F2937"/>
+        <text class="b0dW" x="616" y="94">Precision below floor</text>
+        <text class="b0dX" x="616" y="118" style="fill:#FEE2E2">Too many alerts came back "false".</text>
+        <text class="b0dX" x="616" y="136" style="fill:#FEE2E2">Normal has drifted; the threshold</text>
+        <text class="b0dX" x="616" y="154" style="fill:#FEE2E2">is now too loose for today's data.</text>
+        <text class="b0dW" x="616" y="184">Act before the mute</text>
+        <text class="b0dX" x="616" y="204" style="fill:#FEE2E2">Re-tune or retrain now, not after</text>
+        <rect x="24" y="276" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b0dN" x="46" y="288">Monitoring the detector's own precision is how you catch drift before the team stops trusting it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - rolling precision sliding below the floor triggers a retrain</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Concept drift, retrain cadence, and guardrails<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three habits keep a live detector trustworthy long after launch:</p>
+        <ul>
+          <li><strong>Monitor the detector, not just the metric.</strong> Track rolling precision (and recall, as investigations resolve) on the dispositions coming back. A quietly falling precision is concept drift showing up before anyone complains.</li>
+          <li><strong>Retrain on a cadence and on a trigger.</strong> Refit the baseline on a schedule (rolling window, seasonal refit) and also on demand when the drift monitor fires. Version the threshold so you can roll back a bad tune.</li>
+          <li><strong>Guardrail the high-stakes path.</strong> A detector can open a ticket or throttle a bot on its own; it should not lock a customer's account or halt a payment line without a human. Keep a person in the loop wherever a false alarm is expensive or irreversible.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Alert feedback + a drift early-warning <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Accumulate on-call dispositions into a rolling precision, and raise a retrain flag the moment it drops below a floor. This is the alert-fatigue smoke detector - it fires before the team reaches for the mute button.</p>
+
+    <div class="steps">
+      <div class="step"><p>Feed in the stream of dispositions (real or false alarm) as they come back from the pager.</p></div>
+      <div class="step"><p>Keep a rolling window of the last N verdicts and compute precision over it.</p></div>
+      <div class="step"><p>Raise a "retrain" flag when the rolling precision falls below the floor.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - rolling precision + retrain flag</span>import numpy as np
+from collections import deque
+
+# on-call dispositions arriving over time: True = real anomaly, False = false alarm
+# (in production these come back from the pager as each alert is triaged)
+dispositions = [True, True, False, True, False, False, True, False, False, False,
+                False, True, False, False, False, False, False, True, False, False]
+
+class DriftMonitor:
+    def __init__(self, window=10, floor=0.5):
+        self.recent = deque(maxlen=window)   # last N verdicts
+        self.floor = floor
+
+    def record(self, was_real):
+        self.recent.append(1 if was_real else 0)
+        precision = float(np.mean(self.recent)) if self.recent else 1.0
+        full = len(self.recent) == self.recent.maxlen
+        degrading = full and precision &lt; self.floor
+        return precision, degrading
+
+mon = DriftMonitor(window=10, floor=0.5)
+for n, real in enumerate(dispositions, 1):
+    precision, degrading = mon.record(real)
+    flag = "  &lt;-- RETRAIN: rolling precision below floor" if degrading else ""
+    print(f"alert {n:2d}  rolling precision = {precision:.2f}{flag}")
+# precision drifts down as false alarms pile up; the flag fires before the team mutes you</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world · closing the loop back to b1</span>
+      <p><strong>This is the loop the analyst from session 1 lives inside.</strong> They set the baseline and label the incidents; the detector scores the stream; the alerting layer pages once; the responder's verdict flows back as a fresh label; the drift monitor decides when to retrain - and it lands right back at the analyst. Ten sessions ago an anomaly was "a point that does not fit the pattern." Now it is a governed, measured, self-correcting system that a real on-call team can trust at 3am. That is the whole job.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run the streaming detector on the Lumen series and confirm the collective run fires exactly one deduplicated alert. Then shorten the cooldown and watch the duplicates return.</li>
+      <li>Swap the rolling baseline for an EWMA or a seasonal-residual baseline (from b3) inside the streaming loop and compare which anomalies each catches online.</li>
+      <li>Feed a stream of dispositions where false alarms slowly increase, and tune the drift monitor's window and floor so it fires early but not on noise.</li>
+      <li>Add severity-based routing: high severity pages, warn opens a ticket. Add a suppression window for a simulated maintenance period.</li>
+      <li>Optional: read the NAB scoring methodology and note how it rewards <em>early</em> detection inside an anomaly window - the production cousin of low-latency streaming.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from established production practice and the streaming-detection literature. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Industry practice - streaming detection, alert deduplication, on-call feedback, drift monitoring, human-in-the-loop guardrails</span><span class="note">Parts 1-2 · the serving pipeline and its operational habits</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB, Lavin &amp; Ahmad 2015)</span><span class="note">Part 2 · streaming evaluation and early-detection scoring</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · In an online streaming detector, when should the rolling baseline be updated?</p>
+      <button class="qopt" type="button">A · Before scoring the new point</button>
+      <button class="qopt" type="button">B · After scoring the new point, so the anomaly cannot contaminate its own baseline</button>
+      <button class="qopt" type="button">C · Only once per day in a batch</button>
+      <p class="qwhy">Score first, then append. If the anomaly enters the baseline before it is measured, it inflates the band and hides itself during exactly the events you built the detector to catch.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why is deduplication essential in the alerting layer?</p>
+      <button class="qopt" type="button">A · It makes the detector more accurate</button>
+      <button class="qopt" type="button">B · It is required to compute PR-AUC</button>
+      <button class="qopt" type="button">C · A multi-point incident should be one alert, not many - a burst of pages causes alert fatigue and the team mutes the detector</button>
+      <p class="qwhy">One incident, one alert. Without a cooldown or suppression window, a three-day surge pages three times, and the fastest way to get muted is to cry wolf.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · What does a falling rolling precision on returned dispositions tell you?</p>
+      <button class="qopt" type="button">A · Concept drift - "normal" has shifted and the threshold is now too loose, so re-tune or retrain before the team stops trusting the alerts</button>
+      <button class="qopt" type="button">B · The detector is too slow</button>
+      <button class="qopt" type="button">C · You need more training data labels up front</button>
+      <p class="qwhy">Rising false alarms mean the world drifted out from under the threshold. Catching it in the rolling precision lets you act before alert fatigue sets in and the detector gets muted.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder track wrap - the whole journey <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>b1 · Foundations</b><span>the labeled Lumen series; point / contextual / collective; base rate; z-score baseline.</span></div>
+      <div class="cheat-item"><b>b2 · Statistical</b><span>z-score, 3-sigma, IQR / Tukey, robust MAD - the honest bar to beat.</span></div>
+      <div class="cheat-item"><b>b3 · Rolling &amp; seasonal</b><span>moving mean/std, EWMA, STL-residual - the live detector; context is everything.</span></div>
+      <div class="cheat-item"><b>b4 · Distance &amp; density</b><span>kNN distance and Local Outlier Factor - local, not global, outliers.</span></div>
+      <div class="cheat-item"><b>b5 · Isolation Forest</b><span>anomalies are few and different, so easy to isolate - short path length.</span></div>
+      <div class="cheat-item"><b>b6 · One-class &amp; covariance</b><span>One-Class SVM and Elliptic Envelope - learn normal, flag departures.</span></div>
+      <div class="cheat-item"><b>b7 · Time-series</b><span>change-point, CUSUM, forecast-residual anomalies - shifts and drifts.</span></div>
+      <div class="cheat-item"><b>b8 · Deep</b><span>autoencoder reconstruction error, LSTM-AE - surveyed and cited, not a silver bullet.</span></div>
+      <div class="cheat-item"><b>b9 · Evaluation</b><span>precision, recall, F1, PR-AUC, threshold choice, point-adjustment - the honest scoreboard.</span></div>
+      <div class="cheat-item"><b>b10 · Production</b><span>streaming, dedup, routing, feedback loop, drift monitoring, human-in-the-loop guardrails.</span></div>
+      <div class="cheat-item"><b>The one enemy</b><span>alert fatigue. Tune toward precision, dedup, and monitor drift, or you get muted.</span></div>
+      <div class="cheat-item"><b>The one rule</b><span>accuracy lies on rare events. Measure with precision and recall, and keep labels precious.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 10 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b9-evaluation.html">← Previous: Evaluation</a> &nbsp;·&nbsp; <a href="../index.html">← Back to all sessions</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

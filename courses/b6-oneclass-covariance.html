@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 6 · One-class &amp; covariance - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 6 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 6 of 10</div>
+    <h1>One-class &amp; covariance: <span class="accent">learning the shape of normal</span></h1>
+    <p class="sub">Sometimes you do not have a messy mixed pile - you have a clean sample of what normal looks like, and you want to flag anything that departs from it. That is novelty detection, the semi-supervised corner of the map. This session builds two detectors that learn normal and only normal: a One-Class SVM that wraps a flexible boundary around the normal cloud, and an Elliptic Envelope that fits a robust Gaussian and flags points at large Mahalanobis distance - plus a clear-eyed look at when each one fits and when it breaks.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · scikit-learn</span>
+      <span class="chip time">45 minutes</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Novelty detection</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: OC-SVM + envelope</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>When you can trust your normal data</h2>
+    </div>
+    <p class="lede">Every detector so far ran fully unsupervised on a mixed series - it assumed anomalies were rare and let them stand out. Tonight is different. When you have a clean window you can trust as normal - a quiet stretch with no incidents - you can learn its shape directly and flag any future point that does not fit. This is the semi-supervised, normal-only approach the survey calls novelty detection. Two classic methods lead: the One-Class SVM (Scholkopf et al., 2001) draws a flexible boundary around the normal region, and the Elliptic Envelope / Minimum Covariance Determinant (Rousseeuw &amp; Van Driessen, 1999) fits a robust Gaussian and measures how far each point sits from its centre.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A One-Class SVM fit on a clean normal slice of Lumen and an Elliptic Envelope reading Mahalanobis distances, both scored with precision and recall, and a firm sense of which to reach for: OC-SVM for flexible non-Gaussian normals, Elliptic Envelope when normal is a single roughly-elliptical blob.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ONE-CLASS SVM ============ -->
+  <section class="section" id="ocsvm">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers Scholkopf et al. 2001</span>
+      <h2>One-Class SVM: a boundary around normal <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The One-Class SVM learns from normal data only. It maps the points into a kernel space and finds the tightest boundary that encloses most of them, leaving a small fraction outside. Anything that lands outside that boundary at test time is flagged. Because it uses a kernel, the boundary can be wavy and non-Gaussian - it wraps whatever shape the normal cloud actually has. The <code>nu</code> parameter bounds the fraction of training points allowed outside, so it doubles as your tolerance for outliers.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A One-Class SVM draws a flexible boundary around the cloud of normal points; points landing outside the boundary are flagged as anomalies">
+        <style>
+          .b6oT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b6oX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b6oN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b6oT" x="24" y="26">A flexible boundary wraps the normal cloud</text>
+        <!-- learned boundary (blobby, non-elliptical) -->
+        <path d="M170,150 C170,90 250,70 330,82 C420,95 470,120 470,175 C470,235 400,258 320,252 C240,246 170,220 170,150 Z"
+              fill="#FEF2F2" stroke="#DC2626" stroke-width="1.8"/>
+        <!-- normal points inside -->
+        <g fill="#4B5563">
+          <circle cx="250" cy="145" r="5"/><circle cx="290" cy="165" r="5"/><circle cx="320" cy="130" r="5"/>
+          <circle cx="270" cy="185" r="5"/><circle cx="345" cy="180" r="5"/><circle cx="305" cy="205" r="5"/>
+          <circle cx="230" cy="165" r="5"/><circle cx="365" cy="150" r="5"/><circle cx="310" cy="112" r="5"/>
+          <circle cx="285" cy="128" r="5"/>
+        </g>
+        <text class="b6oX" x="196" y="240">normal region</text>
+        <!-- flagged points outside -->
+        <circle cx="650" cy="120" r="6" fill="#DC2626"/>
+        <text class="b6oX" x="560" y="112">outside -&gt; flagged</text>
+        <circle cx="600" cy="238" r="6" fill="#DC2626"/>
+        <text class="b6oX" x="520" y="256">outside -&gt; flagged</text>
+        <rect x="24" y="272" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b6oN" x="46" y="284">One-Class SVM wraps a flexible non-Gaussian boundary; nu bounds the outlier fraction.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the learned boundary, and the points that fall outside it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>How <code>nu</code> and <code>gamma</code> shape it<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong><code>nu</code></strong> - an upper bound on the fraction of training points that may sit outside the boundary, and a lower bound on the fraction of support vectors. Roughly, your assumed outlier rate. Higher <code>nu</code> = a tighter boundary that flags more.</li>
+          <li><strong><code>gamma</code></strong> - the RBF kernel width. Large <code>gamma</code> makes a wiggly boundary that hugs every point (overfits); small <code>gamma</code> makes it smooth and loose.</li>
+          <li><strong>Scale your features first</strong> - the RBF kernel is distance-based, so an unscaled feature dominates. Always standardize before fitting.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>One-Class SVM shines when normal is complex but well-sampled.</strong> Think machine-health monitoring: you have months of clean sensor readings from a healthy machine and want to flag any departure. You do not know what failure looks like, only what health looks like - the textbook novelty-detection setup. Its cost is tuning <code>nu</code> and <code>gamma</code>, and it slows down on very large training sets.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: ELLIPTIC ENVELOPE ============ -->
+  <section class="section" id="envelope">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers Rousseeuw &amp; Van Driessen 1999</span>
+      <h2>Elliptic Envelope: a robust Gaussian <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">If your normal data is roughly one Gaussian blob, you can do something cleaner. Fit a mean and a covariance to the normal cloud and you have described an ellipse; a point's <strong>Mahalanobis distance</strong> - its distance from the centre, scaled by the covariance - says how far it is in the ellipse's own units. Flag the far ones. The Minimum Covariance Determinant makes the fit robust: it estimates the mean and covariance from the tightest subset of points, so a few outliers cannot warp the ellipse. It is elegant and fast - but it lives or dies on the Gaussian assumption.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="On roughly Gaussian data a robust ellipse fits well and a far point at large Mahalanobis distance is flagged; on a non-Gaussian two-cluster shape the single ellipse mis-fits">
+        <style>
+          .b6eT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b6eX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b6eN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b6eT" x="24" y="26">Fits a Gaussian blob - breaks on anything else</text>
+        <!-- Panel A: fits -->
+        <rect x="40" y="44" width="380" height="210" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="b6eT" x="56" y="68">Roughly Gaussian - fits</text>
+        <ellipse cx="220" cy="165" rx="120" ry="52" fill="none" stroke="#4B5563" stroke-width="1.8"/>
+        <g fill="#4B5563">
+          <circle cx="180" cy="160" r="5"/><circle cx="210" cy="172" r="5"/><circle cx="250" cy="155" r="5"/>
+          <circle cx="230" cy="182" r="5"/><circle cx="200" cy="148" r="5"/><circle cx="270" cy="168" r="5"/>
+          <circle cx="240" cy="140" r="5"/><circle cx="190" cy="178" r="5"/>
+        </g>
+        <line x1="220" y1="165" x2="360" y2="95" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="360" cy="95" r="6" fill="#DC2626"/>
+        <text class="b6eX" x="300" y="88">far: flagged</text>
+        <text class="b6eN" x="56" y="242">large Mahalanobis distance = anomaly</text>
+        <!-- Panel B: breaks -->
+        <rect x="460" y="44" width="380" height="210" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="b6eT" x="476" y="68">Non-Gaussian - breaks</text>
+        <ellipse cx="650" cy="160" rx="150" ry="80" fill="none" stroke="#DC2626" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <g fill="#4B5563">
+          <circle cx="540" cy="110" r="5"/><circle cx="560" cy="122" r="5"/><circle cx="525" cy="128" r="5"/>
+          <circle cx="555" cy="100" r="5"/><circle cx="575" cy="132" r="5"/>
+          <circle cx="745" cy="205" r="5"/><circle cx="765" cy="218" r="5"/><circle cx="730" cy="222" r="5"/>
+          <circle cx="760" cy="195" r="5"/><circle cx="780" cy="212" r="5"/>
+        </g>
+        <circle cx="540" cy="110" r="9" fill="none" stroke="#DC2626" stroke-width="2"/>
+        <text class="b6eX" x="500" y="98">false flag</text>
+        <text class="b6eX" x="600" y="165">empty centre</text>
+        <text class="b6eN" x="476" y="242">two clusters: the ellipse mis-fits</text>
+        <rect x="24" y="276" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b6eN" x="46" y="288">Elliptic Envelope assumes one Gaussian blob - great when normal is elliptical, poor when it is not.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a robust ellipse fits Gaussian data and mis-fits a two-cluster shape</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>OC-SVM vs Elliptic Envelope - which when?<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Both learn normal only, but they assume different things about its shape:</p>
+        <ul>
+          <li><strong>Elliptic Envelope</strong> - assumes normal is a single Gaussian blob. When that holds it is fast, needs almost no tuning, and gives an interpretable Mahalanobis distance. When normal is multi-modal, curved, or clustered, the single ellipse spans the empty middle and both false-flags real points and misses true gaps.</li>
+          <li><strong>One-Class SVM</strong> - makes no shape assumption; the kernel boundary bends to whatever the normal cloud looks like. More flexible, but you pay in tuning (<code>nu</code>, <code>gamma</code>) and it scales worse.</li>
+          <li><strong>Rule of thumb</strong> - plot your normal data first. One tidy blob? Elliptic Envelope. Anything weirder? One-Class SVM, or back to Isolation Forest.</li>
+        </ul>
+        <p>And the shared caveat: both are only as good as the "normal" sample you trained on. If an anomaly sneaked into your clean window, you taught the detector that it is normal.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>One-Class SVM on a clean normal slice <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Train on a normal-only slice of the Lumen features, then predict on every day and score the flags.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled Lumen series and its feature matrix, then standardize - the RBF kernel needs scaled features.</p></div>
+      <div class="step"><p>Select a clean normal window to learn from (here, the known-normal days - in practice, a quiet incident-free stretch).</p></div>
+      <div class="step"><p>Fit <code>OneClassSVM</code>, predict on all days, and score precision, recall, and F1.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - OneClassSVM novelty detection</span>import pandas as pd, numpy as np
+from sklearn.svm import OneClassSVM
+from sklearn.preprocessing import StandardScaler
+
+# --- rebuild the labeled Lumen series (from b1) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110]); i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+label = pd.Series(0, index=idx); label.iloc[truth] = 1
+
+# --- feature matrix + scaling (RBF kernel is distance-based) ---
+df = pd.DataFrame({"value": s})
+df["lag7"]  = s.shift(7)
+df["rmean"] = s.rolling(7, min_periods=1).mean()
+df["rstd"]  = s.rolling(7, min_periods=1).std()
+X  = df.bfill().ffill().values
+Xs = StandardScaler().fit_transform(X)
+
+# --- semi-supervised: learn the shape of a CLEAN normal sample ---
+normal = label.values == 0                 # a known incident-free window in practice
+ocsvm  = OneClassSVM(nu=0.08, gamma="scale").fit(Xs[normal])
+pred   = ocsvm.predict(Xs)                  # -1 = novelty/anomaly, on ALL days
+flags  = set(np.where(pred == -1)[0])
+
+t = set(truth)
+tp = len(flags &amp; t); fp = len(flags - t); fn = len(t - flags)
+p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+print(f"OC-SVM  caught {tp}/{len(t)}  P {p:.2f}  R {r:.2f}  F1 {2*p*r/(p+r) if p+r else 0:.2f}")</div>
+
+    <div class="callout tip">
+      <strong>Your "normal" window is a promise you are making</strong>
+      One-class methods only work if the training slice is genuinely clean. Here we used the labels to pick it, which is a shortcut for teaching - in production you would choose a quiet, incident-free stretch by hand and defend that choice. If an anomaly hides in your training window, the detector learns to call it normal, and you will never flag its cousins.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Elliptic Envelope and Mahalanobis distance <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Fit a robust Gaussian to the same features, read the Mahalanobis distances, flag the far points, and contrast it with the OC-SVM - noting the Gaussian assumption it rests on.</p>
+
+    <div class="steps">
+      <div class="step"><p>Fit <code>EllipticEnvelope</code> with a contamination rate on the scaled features.</p></div>
+      <div class="step"><p>Read <code>mahalanobis</code> distances - the far ones are the anomalies - and score the flags.</p></div>
+      <div class="step"><p>Rank days by Mahalanobis distance and compare to the OC-SVM result; note where the Gaussian assumption helps or hurts.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - EllipticEnvelope + Mahalanobis</span>import numpy as np, pandas as pd
+from sklearn.covariance import EllipticEnvelope
+
+# same scaled feature matrix Xs; contamination = assumed anomaly rate (the threshold)
+ee   = EllipticEnvelope(contamination=0.07, support_fraction=0.9,
+                        random_state=0).fit(Xs)
+pred = ee.predict(Xs)                    # -1 = anomaly, 1 = normal
+maha = ee.mahalanobis(Xs)                # squared distance to the robust centre
+flags = set(np.where(pred == -1)[0])
+
+t = set(truth)
+tp = len(flags &amp; t); fp = len(flags - t); fn = len(t - flags)
+p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+print(f"EllipticEnvelope  caught {tp}/{len(t)}  P {p:.2f}  R {r:.2f}  "
+      f"F1 {2*p*r/(p+r) if p+r else 0:.2f}")
+
+# rank days by Mahalanobis distance (large = far from the Gaussian centre)
+print("\nfarthest days:")
+print(pd.Series(maha, index=s.index).sort_values(ascending=False).head(6))</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Elliptic Envelope is the honest default when your normal really is one blob.</strong> Sensor calibration, lab measurements, and many financial features cluster tightly around a mean, and there the Mahalanobis distance is interpretable and cheap. But always plot first: the moment normal splits into two regimes - weekday vs weekend, product A vs product B - a single ellipse straddles the gap, false-flags the honest points, and waves the real ones through. When you see multiple modes, reach for One-Class SVM or Isolation Forest instead.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Fit One-Class SVM on a clean slice and sweep <code>nu</code> from 0.02 to 0.2. Watch the boundary tighten and recall climb as precision falls.</li>
+      <li>Change <code>gamma</code> from <code>"scale"</code> to a large value and see the boundary overfit - it wraps every training point and flags almost nothing new.</li>
+      <li>Fit Elliptic Envelope and plot the Mahalanobis distances. Do the true anomalies sit at the top?</li>
+      <li>Deliberately give both detectors a two-cluster normal (stack a weekday and a weekend feature) and watch the ellipse break where the SVM copes.</li>
+      <li>Optional: skim Scholkopf et al. (2001) for the OC-SVM formulation and Rousseeuw &amp; Van Driessen (1999) for the MCD estimator.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Scholkopf, Platt, Shawe-Taylor, Smola &amp; Williamson (2001), One-Class SVM, Neural Computation 13(7)</span><span class="note">Part 1 · a kernel boundary around the normal region; the <code>nu</code> parameter</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Rousseeuw &amp; Van Driessen (1999), Minimum Covariance Determinant (Elliptic Envelope)</span><span class="note">Part 2 · robust Gaussian fit and Mahalanobis distance</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn "Novelty and Outlier Detection" user guide</span><span class="note">Demos 1-2 · <code>OneClassSVM</code>, <code>EllipticEnvelope</code>, and feature scaling</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · What makes One-Class SVM and Elliptic Envelope "semi-supervised"?</p>
+      <button class="qopt" type="button">A · They use labelled anomalies to train</button>
+      <button class="qopt" type="button">B · They need no data at all</button>
+      <button class="qopt" type="button">C · They learn from a clean sample of normal data only, then flag departures from it</button>
+      <p class="qwhy">This is novelty detection: you train on normal-only data (no anomaly labels) and flag anything that does not fit the learned normal. The clean training window is the whole assumption.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · When does Elliptic Envelope break down?</p>
+      <button class="qopt" type="button">A · When the data has too few features</button>
+      <button class="qopt" type="button">B · When normal is not one Gaussian blob - two clusters make the single ellipse span the empty middle</button>
+      <button class="qopt" type="button">C · When the anomalies are too obvious</button>
+      <p class="qwhy">Elliptic Envelope fits one robust Gaussian. If normal is multi-modal or curved, the ellipse straddles the gap, false-flags real points, and misses true anomalies.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why standardize features before a One-Class SVM?</p>
+      <button class="qopt" type="button">A · The RBF kernel is distance-based, so an unscaled feature would dominate the boundary</button>
+      <button class="qopt" type="button">B · It makes the model train on fewer points</button>
+      <button class="qopt" type="button">C · It converts the labels into numbers</button>
+      <p class="qwhy">The RBF kernel measures distances between points. A feature on a large scale swamps the others, so you standardize first to give every feature a fair say.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Novelty detection</b><span>learn normal only, flag departures. Semi-supervised - needs a clean normal sample.</span></div>
+      <div class="cheat-item"><b>One-Class SVM</b><span>a kernel boundary around the normal cloud; flexible, non-Gaussian shapes.</span></div>
+      <div class="cheat-item"><b>nu</b><span>bounds the outlier fraction - your tolerance. Higher = tighter boundary, more flags.</span></div>
+      <div class="cheat-item"><b>Scale first</b><span>the RBF kernel is distance-based; standardize or one feature dominates.</span></div>
+      <div class="cheat-item"><b>Elliptic Envelope</b><span>fits a robust Gaussian (MCD); flags large Mahalanobis distance.</span></div>
+      <div class="cheat-item"><b>Mahalanobis</b><span>distance from the centre in the ellipse's own units - interpretable when Gaussian.</span></div>
+      <div class="cheat-item"><b>Assumption check</b><span>plot first. One blob = envelope; multi-modal or curved = OC-SVM.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b7 - time-series anomalies: change-points, CUSUM, and forecast residuals.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 6 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b5-isolation-forest.html">← Prev: Isolation Forest</a> &nbsp;·&nbsp; <a href="b7-timeseries-anomalies.html">Next: Time-series anomalies →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

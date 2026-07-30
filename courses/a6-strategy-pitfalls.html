@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 6 · Strategy &amp; pitfalls - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 6 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 6 of 6</div>
+    <h1>Strategy &amp; pitfalls: <span class="accent">and when NOT to auto-flag</span></h1>
+    <p class="sub">The leader capstone. Detection is not a model you install and forget - it is a system with a threshold you set, a normal that drifts under you, and humans who must trust the alerts to act on them. This session pulls the whole leader track together: the threshold as a business call, concept drift, keeping a human in the loop, the feedback-loop danger, the cases where you should not auto-flag at all, a quick build-vs-buy read, and a crawl-walk-run roadmap you can take back to your team.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">~22 min read</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:3">0-8 · Threshold, drift, humans</span>
+      <span class="a2" style="flex:3">8-15 · When NOT to auto-flag</span>
+      <span class="a3" style="flex:2">15-19 · Build vs buy</span>
+      <span class="a4" style="flex:2">19-22 · The roadmap</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Detection is a system, not a model</h2>
+    </div>
+    <p class="lede">The tempting mental model is that you buy or build a detector, switch it on, and problems now announce themselves. Every part of that is wrong. The detector needs a threshold that reflects <em>your</em> costs, its idea of normal decays as your business changes, its alerts are worthless unless a human trusts and acts on them, and left fully automatic it can quietly stop learning what normal even looks like. This final leader session is about running detection as a living system - and knowing the times you should not automate it at all.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The threshold understood as a cost decision you own, a nose for concept drift and the muscle to insist on monitoring and retraining, the human-in-the-loop pattern for high-stakes flags, the feedback-loop trap that stops a system learning, a clear list of when NOT to auto-flag, and a crawl-walk-run roadmap to stage your org's detection maturity.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THRESHOLD AS BUSINESS DECISION ============ -->
+  <section class="section" id="threshold">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the dial, revisited</span>
+      <h2>The threshold is a business decision <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Last session showed the sensitivity dial trades recall for precision. Here is the leadership point: choosing where it sits is not a model task at all - it is a cost decision, and it belongs to you. The only honest way to set it is to weigh the <strong>cost of a miss</strong> against the <strong>cost of a false alarm</strong>, in your context, and pick the operating point that hurts least.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Two costs, one operating point<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The two mistakes are rarely equal, and the ratio decides the dial:</p>
+        <ul>
+          <li><strong>Cost of a miss</strong> - what a silent anomaly does. A missed outage is an incident and a headline; a missed fraud is money out the door; a missed defect is a recall.</li>
+          <li><strong>Cost of a false alarm</strong> - what a wrong flag does. A frozen customer card, a woken engineer, a wasted investigation, and a little more of the team's trust spent.</li>
+        </ul>
+        <p>When misses dominate, tune sensitive and accept the noise. When false alarms dominate, tune conservative and accept some misses. A model cannot make this call because it does not know your costs - so ask for precision and recall at a few settings, then decide.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>A hospital vitals monitor and a marketing-email spam filter sit at opposite ends.</strong> The monitor tunes for recall - a missed crisis is unacceptable, so it tolerates many false alarms. The spam filter tunes for precision - one real email lost to the junk folder costs more than letting a little spam through. Same dial, opposite settings, because the costs are opposite.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: CONCEPT DRIFT ============ -->
+  <section class="section" id="drift">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · normal is a moving target</span>
+      <h2>Concept drift: normal changes <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">A detector learns what normal looks like and flags departures from it. But normal is not fixed. A new marketing campaign lifts your traffic, a new product shifts your mix, a seasonal pattern arrives - and suddenly the detector, trained on the old normal, screams anomaly at things that are perfectly fine. This is concept drift, and a static detector rots into a false-alarm machine.</p>
+
+    <div class="callout tip">
+      <strong>A detector you never retrain is a false-alarm machine in waiting</strong>
+      The moment your business changes on purpose - a launch, a promotion, a new market - the old "normal" is wrong, and a static detector will flag the new reality as anomalous. You cannot set detection and forget it. You must monitor the detector's own false-alarm rate over time and retrain it as normal moves, or the team will start ignoring it (last session's alert fatigue, arriving through the back door).
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Watching for drift without the math<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>You do not need to read a statistics dashboard to catch drift. Watch for the business signals:</p>
+        <ul>
+          <li>The alert volume climbs steadily even though nothing is actually breaking more often.</li>
+          <li>Alerts cluster around a known change - a campaign week, a new feature, a holiday - and are all false.</li>
+          <li>The team starts saying "ignore the spike, that's just the new normal."</li>
+        </ul>
+        <p>Each is a cue to retrain the detector on recent data so its idea of normal catches up with the business. Monitoring the detector is as important as the detector itself - which is the last rung of the maturity roadmap below.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: HUMAN IN THE LOOP + FEEDBACK ============ -->
+  <section class="section" id="human">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · keep a person in it</span>
+      <h2>Human-in-the-loop, and the feedback trap <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">For high-stakes flags, detection should <strong>triage for a human, not act on its own</strong>. The detector's job is to surface the suspicious few from the ocean of normal so a person can decide - and that person's decision (real, or false alarm) is precious feedback that makes the next round better. But automate too aggressively and you spring a subtle trap: a system that acts on its own flags can stop learning what normal even is.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Triage for a human on high-stakes flags<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Detection rarely knows <em>why</em> something is odd - only that it is. For anything consequential, that means the right output is a prioritized queue for a human, not an automatic action:</p>
+        <ul>
+          <li>The detector ranks and surfaces the suspicious cases, with context.</li>
+          <li>A human investigates and dispositions each one - real, or false alarm.</li>
+          <li>That disposition feeds back as a label, sharpening the detector and letting you actually measure precision over time.</li>
+        </ul>
+        <p>This is also how scarce, precious labels get created in the first place: through human investigation, arriving late but real. The human is not overhead - the human is the label factory.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The feedback-loop danger<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Here is the trap. Suppose flagged cases are automatically removed or auto-actioned - blocked, filtered, cancelled - with no human ever confirming them. Now the detector never learns whether it was right, and worse, it stops seeing the very cases it flags. Its picture of "normal" freezes or curdles, false alarms get treated as truth, and errors compound silently.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Auto-blocking is where this bites.</strong> A fraud system that auto-cancels every flagged transaction with no review never finds out how many were good customers - it just quietly loses them, and its sense of normal drifts toward whatever it has not yet blocked. Keep a human sampling the flags, or the loop closes on itself and you stop learning.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 4: WHEN NOT TO AUTO-FLAG ============ -->
+  <section class="section" id="not-autoflag">
+    <div class="section-kicker">
+      <span class="klabel">Part 4 · the restraint</span>
+      <h2>When NOT to auto-flag <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">The most senior instinct in this whole track is knowing when to <em>not</em> build the automated detector. Detection has real costs - false alarms, engineering, trust - and there are situations where auto-flagging makes things worse, not better. Name these before you commit a team to building.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four guardrails against auto-flagging: alert fatigue from low precision, concept drift from a changing normal, no one on call to action alerts, and over-automation that stops the system learning">
+        <style>
+          .a6gT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a6gH { font: 700 13.5px Inter, sans-serif; fill: #7F1D1D; }
+          .a6gX { font: 400 11.5px Inter, sans-serif; fill: #4B5563; }
+        </style>
+        <text class="a6gT" x="24" y="28">Four guardrails: do not auto-flag into these</text>
+        <!-- tile 1 -->
+        <rect x="24" y="46" width="404" height="104" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a6gH" x="44" y="76">⚠ Low precision + costly false alarms</text>
+        <text class="a6gX" x="44" y="100">If most alerts would be noise and each false</text>
+        <text class="a6gX" x="44" y="118">alarm is expensive, auto-flagging just breeds</text>
+        <text class="a6gX" x="44" y="136">alert fatigue until the detector is muted.</text>
+        <!-- tile 2 -->
+        <rect x="452" y="46" width="404" height="104" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a6gH" x="472" y="76">⚠ Fast-drifting normal</text>
+        <text class="a6gX" x="472" y="100">If normal changes constantly and nobody will</text>
+        <text class="a6gX" x="472" y="118">retrain it, a static detector rots into a</text>
+        <text class="a6gX" x="472" y="136">stream of false alarms within weeks.</text>
+        <!-- tile 3 -->
+        <rect x="24" y="166" width="404" height="104" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a6gH" x="44" y="196">⚠ No one on call to act</text>
+        <text class="a6gX" x="44" y="220">Alerts nobody reads or actions are worse than</text>
+        <text class="a6gX" x="44" y="238">none - they cost to build and give false comfort</text>
+        <text class="a6gX" x="44" y="256">that "we are covered" when no one responds.</text>
+        <!-- tile 4 -->
+        <rect x="452" y="166" width="404" height="104" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a6gH" x="472" y="196">⚠ Over-automation with no human</text>
+        <text class="a6gX" x="472" y="220">Auto-actioning flags with no review closes the</text>
+        <text class="a6gX" x="472" y="238">loop on itself: the system stops learning what</text>
+        <text class="a6gX" x="472" y="256">normal is. Also: when a simple rule is enough.</text>
+        <rect x="24" y="284" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a6gH" x="46" y="296">Sometimes the right detector is a plain threshold rule, or a human review - not an ML system.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the four guardrails against auto-flagging</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>"A simple rule is enough" is a real answer<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Do not let the appeal of a clever model talk you past a plain rule that already works. If "alert me when the value crosses this line" catches what you need, a machine-learned detector adds cost, drift risk, and false alarms for no gain. Reach for the ML detector only when the anomalies are contextual, collective, or shifting in ways a fixed rule genuinely cannot express. Starting simple is not timidity - it is the first rung of the roadmap.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 5: BUILD VS BUY ============ -->
+  <section class="section" id="build-buy">
+    <div class="section-kicker">
+      <span class="klabel">Part 5 · the leader call</span>
+      <h2>Build vs buy, briefly <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">You do not always have to build the detector in-house. Managed detection services exist for common domains, and the choice is a familiar leadership trade-off, not a technical one.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>When to buy, when to build<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Lean toward buy</strong> when the problem is standard (common fraud, infrastructure metrics), you lack a data-science team, or you need it working next quarter. A managed service ships tuning, monitoring, and retraining you would otherwise build.</li>
+          <li><strong>Lean toward build</strong> when the anomalies are specific to your business, the data cannot leave your walls, or detection is itself a competitive edge worth owning.</li>
+        </ul>
+        <p>Either way, everything in this track still applies - a bought detector still has a threshold you must set, drifts you must monitor, alerts a human must act on, and the same rare-event honesty about precision and recall. Buying moves the work; it does not remove your judgment.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 6: THE ROADMAP ============ -->
+  <section class="section" id="roadmap">
+    <div class="section-kicker">
+      <span class="klabel">Part 6 · stage the maturity</span>
+      <h2>A crawl-walk-run roadmap <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">You do not deploy a monitored, retrained, human-in-the-loop ML detector on day one. You earn your way up. This is the staircase to take back to your team - each rung delivers value and sets up the next, and most orgs should start at the bottom left, not the top right.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A crawl-walk-run maturity staircase: baseline threshold, then contextual and seasonal, then an ML detector with a tuned threshold, then human-in-the-loop with feedback, then a monitored and retrained system">
+        <style>
+          .a6rT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a6rB { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a6rBW { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .a6rC { font: 400 10.5px Inter, sans-serif; fill: #6B7280; }
+          .a6rP { font: 700 12px Inter, sans-serif; fill: #7F1D1D; letter-spacing: .04em; }
+          .a6rN { font: 800 13px Inter, sans-serif; fill: #FFFFFF; }
+          .a6rNd { font: 800 13px Inter, sans-serif; fill: #1F2937; }
+        </style>
+        <text class="a6rT" x="24" y="26">Earn your way up: each rung sets up the next</text>
+        <!-- phase bands -->
+        <text class="a6rP" x="108" y="52" text-anchor="middle">CRAWL</text>
+        <text class="a6rP" x="438" y="52" text-anchor="middle">WALK</text>
+        <text class="a6rP" x="774" y="52" text-anchor="middle">RUN</text>
+        <line x1="24" y1="60" x2="192" y2="60" stroke="#DC2626" stroke-width="2"/>
+        <line x1="360" y1="60" x2="516" y2="60" stroke="#DC2626" stroke-width="2"/>
+        <line x1="684" y1="60" x2="852" y2="60" stroke="#DC2626" stroke-width="2"/>
+        <!-- step 1 -->
+        <rect x="24" y="250" width="156" height="60" rx="10" fill="#E5E7EB"/>
+        <circle cx="48" cy="274" r="12" fill="#4B5563"/><text class="a6rN" x="48" y="279" text-anchor="middle">1</text>
+        <text class="a6rB" x="68" y="272">Baseline</text>
+        <text class="a6rB" x="68" y="288">threshold</text>
+        <!-- step 2 -->
+        <rect x="192" y="210" width="156" height="100" rx="10" fill="#D1D5DB"/>
+        <circle cx="216" cy="234" r="12" fill="#4B5563"/><text class="a6rN" x="216" y="239" text-anchor="middle">2</text>
+        <text class="a6rB" x="236" y="232">Contextual</text>
+        <text class="a6rB" x="236" y="248">+ seasonal</text>
+        <!-- step 3 -->
+        <rect x="360" y="168" width="156" height="142" rx="10" fill="#9CA3AF"/>
+        <circle cx="384" cy="192" r="12" fill="#1F2937"/><text class="a6rN" x="384" y="197" text-anchor="middle">3</text>
+        <text class="a6rB" x="404" y="190">ML detector</text>
+        <text class="a6rB" x="404" y="206">+ tuned dial</text>
+        <!-- step 4 -->
+        <rect x="528" y="128" width="156" height="182" rx="10" fill="#6B7280"/>
+        <circle cx="552" cy="152" r="12" fill="#1F2937"/><text class="a6rN" x="552" y="157" text-anchor="middle">4</text>
+        <text class="a6rBW" x="572" y="150">Human-in-loop</text>
+        <text class="a6rBW" x="572" y="166">+ feedback</text>
+        <!-- step 5 -->
+        <rect x="696" y="88" width="156" height="222" rx="10" fill="#4B5563"/>
+        <circle cx="720" cy="112" r="12" fill="#DC2626"/><text class="a6rN" x="720" y="117" text-anchor="middle">5</text>
+        <text class="a6rBW" x="740" y="110">Monitored</text>
+        <text class="a6rBW" x="740" y="126">+ retrained</text>
+        <!-- captions under each column -->
+        <text class="a6rC" x="102" y="330" text-anchor="middle">just a static line</text>
+        <text class="a6rC" x="270" y="330" text-anchor="middle">remove the pattern first</text>
+        <text class="a6rC" x="438" y="330" text-anchor="middle">learn odd + set the dial</text>
+        <text class="a6rC" x="606" y="330" text-anchor="middle">a person triages + labels</text>
+        <text class="a6rC" x="774" y="330" text-anchor="middle">watch drift + retrain</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the crawl-walk-run detection maturity staircase</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the staircase<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>1 · Baseline threshold</strong> - a plain "alert past this line." Cheap, honest, the bar everything else must beat.</li>
+          <li><strong>2 · Contextual / seasonal</strong> - remove the known pattern (weekday, season) before flagging, so you stop drowning in expected swings.</li>
+          <li><strong>3 · ML detector + tuned dial</strong> - a real model for contextual and collective anomalies, with the sensitivity dial set to your costs.</li>
+          <li><strong>4 · Human-in-the-loop + feedback</strong> - triage high-stakes flags to a person, and feed their dispositions back as labels.</li>
+          <li><strong>5 · Monitored + retrained</strong> - watch the detector for drift and retrain it as normal moves. Detection as a living system.</li>
+        </ul>
+        <p>Most organizations should honestly place themselves at rung 1 or 2. There is no shame in that - and skipping straight to rung 5 is how detection programs collapse under their own false alarms.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 25-35 min total</span></h2>
+    </div>
+    <ul>
+      <li>Pick one detection need in your org (real or planned) and place it honestly on the crawl-walk-run staircase - which rung is it on today?</li>
+      <li>Draft a <strong>4-step detection roadmap</strong> for it: name the next rung, the one after, and what each delivers. Keep it to four concrete steps a team could act on.</li>
+      <li>For its threshold, write one line on the cost of a miss vs the cost of a false alarm - which dominates, and which way should the dial sit?</li>
+      <li>Name <strong>one thing your org should NOT auto-flag</strong>, and why - low precision, fast drift, no one on call, over-automation, or "a simple rule is enough."</li>
+      <li>Decide build or buy for it in one sentence, and note what still stays your judgment either way.</li>
+      <li>Optional: revisit the Numenta Anomaly Benchmark's framing on streaming detection and why real-world evaluation must account for the human on the other end.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon, framed for decision-makers. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Strategy · unsupervised framing, labels as scarce, technique-fit by anomaly type</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB), Lavin &amp; Ahmad (2015)</span><span class="note">Streaming detection · concept drift, alerting, evaluation in the real world</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Your detector's false-alarm rate has climbed for a month, but nothing is actually breaking more. The likeliest cause?</p>
+      <button class="qopt" type="button">A · The model is running too slowly</button>
+      <button class="qopt" type="button">B · Concept drift - normal has changed (a launch, a season) and the static detector now flags the new normal</button>
+      <button class="qopt" type="button">C · The threshold was set too conservatively</button>
+      <p class="qwhy">Normal is a moving target. A detector you never retrain rots into a false-alarm machine as the business changes. Monitor and retrain.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · For a high-stakes fraud flag, why route it to a human instead of auto-cancelling the transaction?</p>
+      <button class="qopt" type="button">A · Humans are cheaper than compute</button>
+      <button class="qopt" type="button">B · It is always faster</button>
+      <button class="qopt" type="button">C · The human triages and dispositions it - creating the labels that improve the detector - and auto-actioning would close the loop so it stops learning normal</button>
+      <p class="qwhy">Human-in-the-loop turns flags into precious labels and avoids the feedback trap where an auto-actioning system stops seeing, and learning from, what it flags.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Which is a legitimate reason NOT to build an auto-flagging detector?</p>
+      <button class="qopt" type="button">A · Precision would be low, false alarms are costly, and there is no one on call to action alerts - or a simple rule already works</button>
+      <button class="qopt" type="button">B · Anomalies would be too easy to catch</button>
+      <button class="qopt" type="button">C · The data is perfectly clean</button>
+      <p class="qwhy">Auto-flagging into low precision, fast drift, an empty on-call, or over-automation makes things worse. Sometimes a plain rule or human review is the right answer.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 6 cheat sheet · the leader track wraps here <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Threshold = cost call</b><span>set the dial by cost of a miss vs cost of a false alarm. Your decision, not the model's.</span></div>
+      <div class="cheat-item"><b>Concept drift</b><span>normal changes (launch, season). A static detector rots into false alarms - monitor and retrain.</span></div>
+      <div class="cheat-item"><b>Human-in-the-loop</b><span>high-stakes flags triage for a person; their disposition feeds back as precious labels.</span></div>
+      <div class="cheat-item"><b>Feedback trap</b><span>auto-actioning flags with no review stops the system learning what normal is.</span></div>
+      <div class="cheat-item"><b>When NOT to auto-flag</b><span>low precision + costly false alarms, fast drift, no one on call, over-automation, or a simple rule is enough.</span></div>
+      <div class="cheat-item"><b>Build vs buy</b><span>buy for standard problems; build for business-specific edge. Your judgment stays either way.</span></div>
+      <div class="cheat-item"><b>Crawl-walk-run</b><span>baseline → contextual → ML+dial → human-in-loop → monitored/retrained. Start low, earn up.</span></div>
+      <div class="cheat-item"><b>Leader track done</b><span>you can now run detection as a system: honest metrics, an owned dial, and the sense to not over-automate.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 6 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a5-measuring-detection.html">← Previous: Measuring detection</a> &nbsp;·&nbsp; <a href="b1-anomaly-foundations.html">Cross to the Builder track: Anomaly foundations →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

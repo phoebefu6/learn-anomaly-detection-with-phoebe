@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 2 · Statistical detectors - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 2 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 2 of 10</div>
+    <h1>Statistical detectors: <span class="accent">the threshold family</span></h1>
+    <p class="sub">The oldest idea in the book: draw a line, flag whatever crosses it. This session builds the three classic threshold detectors on the Lumen series - the z-score / three-sigma rule and the fatal flaw hiding inside it, the IQR / Tukey fences that quartiles make robust, and the median-absolute-deviation (MAD) rule that resists outliers best of all - then proves, in code, why the plain z-score masks the very anomalies you care about.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · numpy / scipy</span>
+      <span class="chip time">45 minutes</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Three thresholds + masking</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: score + unmask</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">In b1 we built the labeled Lumen series and shipped a z-score baseline that caught the giant spike and drop but missed everything subtler. Tonight we stay in the world of global thresholds - a single cut line for the whole series - but we make it honest. The plain z-score has a self-inflicted wound: the big anomalies it is meant to catch inflate its own standard deviation, and that fattened band swallows the moderate anomalies whole. This is <strong>masking</strong>. The fix is to build thresholds on statistics the outliers cannot move - quartiles and the median - which gives us the IQR fences and the robust MAD rule. Three detectors, one line of defence, and a clear rule for when each one fits.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      Three global detectors coded and scored on Lumen - z-score, IQR / Tukey fences, and robust MAD - a working feel for which one to reach for, and a hands-on demonstration of masking: watch a moderate anomaly stay hidden until you strip the giant outliers that were inflating the threshold.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE THREE THRESHOLDS ============ -->
+  <section class="section" id="thresholds">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the threshold family</span>
+      <h2>Three ways to draw the line <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">All three detectors flag a point that sits too far from the centre. They differ in <em>how they measure the centre and the spread</em> - and that difference is everything, because one uses statistics the outliers can drag around, and two do not.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A number line of clustered normal points and one far-right outlier, with three threshold bands beneath: mean plus or minus three sigma is dragged wide by the outlier and swallows everything, while the Tukey fences and median plus or minus MAD stay tight and flag the outlier">
+        <style>
+          .b2aT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .b2aL { font: 700 12.5px Inter, sans-serif; fill: #1F2937; }
+          .b2aX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b2aN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+          .b2aM { font: 600 12px Inter, sans-serif; fill: #92400E; }
+        </style>
+        <text class="b2aT" x="24" y="26">One outlier, three different lines</text>
+        <!-- number line -->
+        <line x1="60" y1="76" x2="820" y2="76" stroke="#D1D5DB" stroke-width="2"/>
+        <!-- bulk of normal points -->
+        <g fill="#4B5563">
+          <circle cx="150" cy="76" r="5"/><circle cx="180" cy="76" r="5"/><circle cx="205" cy="76" r="5"/>
+          <circle cx="230" cy="76" r="5"/><circle cx="255" cy="76" r="5"/><circle cx="285" cy="76" r="5"/>
+          <circle cx="310" cy="76" r="5"/><circle cx="340" cy="76" r="5"/><circle cx="370" cy="76" r="5"/>
+          <circle cx="400" cy="76" r="5"/><circle cx="430" cy="76" r="5"/>
+        </g>
+        <!-- the giant outlier far right -->
+        <circle cx="740" cy="76" r="7" fill="#DC2626"/>
+        <text class="b2aN" x="700" y="60">giant outlier</text>
+        <!-- median vs mean markers -->
+        <line x1="285" y1="60" x2="285" y2="92" stroke="#1F2937" stroke-width="2"/>
+        <text class="b2aL" x="256" y="108">median</text>
+        <line x1="352" y1="60" x2="352" y2="92" stroke="#DC2626" stroke-width="2" stroke-dasharray="4 3"/>
+        <text class="b2aN" x="332" y="124">mean, dragged right</text>
+        <!-- Band 1: mean +/- 3 sigma - too wide -->
+        <rect x="90" y="150" width="740" height="34" rx="8" fill="#FEF2F2" stroke="#F87171"/>
+        <text class="b2aL" x="102" y="171">mean ± 3σ</text>
+        <text class="b2aX" x="220" y="171">outlier inflates σ, so the band swallows it - flags nothing</text>
+        <!-- Band 2: Tukey fences - tight, outlier outside -->
+        <rect x="120" y="198" width="360" height="34" rx="8" fill="#F3F4F6" stroke="#4B5563"/>
+        <text class="b2aL" x="132" y="219">Q1 − 1.5·IQR  ...  Q3 + 1.5·IQR</text>
+        <line x1="480" y1="215" x2="720" y2="215" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text class="b2aN" x="500" y="209">outlier falls outside → flagged</text>
+        <!-- Band 3: median +/- MAD - tightest -->
+        <rect x="150" y="246" width="270" height="34" rx="8" fill="#F3F4F6" stroke="#374151"/>
+        <text class="b2aL" x="162" y="267">median ± k·MAD</text>
+        <line x1="420" y1="263" x2="720" y2="263" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text class="b2aN" x="440" y="257">tightest, most outlier-resistant</text>
+        <!-- outlier drop line through bands -->
+        <line x1="740" y1="88" x2="740" y2="280" stroke="#DC2626" stroke-width="1" stroke-dasharray="2 4"/>
+        <rect x="24" y="150" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b2aN" x="46" y="162">red = anomaly</text>
+        <text class="b2aX" x="24" y="308">Quartiles and the median barely move when one point explodes - so fences built on them stay tight while the mean±3σ band balloons.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the same outlier seen by three thresholds</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The three detectors, and when each fits<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>z-score / three-sigma</strong> - flag <code>|x − mean| / std &gt; 3</code>. Fast, assumes a roughly bell-shaped spread. Fatal flaw: the mean and std are computed from data that <em>includes</em> the anomalies, so big outliers inflate both and the rule masks the moderate ones. Use only when you are confident outliers are few and small, or as the baseline to beat.</li>
+          <li><strong>IQR / Tukey fences</strong> - flag anything below <code>Q1 − 1.5·IQR</code> or above <code>Q3 + 1.5·IQR</code>, where <code>IQR = Q3 − Q1</code>. Quartiles ignore the extreme tails, so the fences do not widen when an outlier appears. A solid, distribution-light default.</li>
+          <li><strong>robust MAD</strong> - modified z-score <code>0.6745·(x − median) / MAD</code>, where <code>MAD</code> is the median of <code>|x − median|</code>; flag <code>|modified z| &gt; 3.5</code>. The median and MAD have the highest breakdown point of the three - roughly half the data would have to be corrupt to move them - so this is the most outlier-resistant threshold.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Server latency dashboards learned this the hard way.</strong> A plain mean+3σ alert on p99 latency goes quiet during the exact incidents it should catch: one monster spike lifts the mean and fattens the band, so the sustained-but-smaller degradation that follows sits comfortably inside it. Teams that switched to median+MAD or IQR fences started catching the slow bleeds. Same data, robust statistic, very different alerts.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: MASKING ============ -->
+  <section class="section" id="masking">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the fatal flaw</span>
+      <h2>Masking and swamping <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">The plain z-score does not just miss subtle anomalies by bad luck - it hides them <em>by construction</em>. Because a giant outlier inflates the standard deviation, the three-sigma band grows so wide that moderate anomalies fall inside it. Strip the giant outlier out and the band snaps back, and the hidden anomaly suddenly crosses the line. This is masking; its mirror image, swamping, is when outliers stretch the band so far that normal points get wrongly flagged.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels. On the left, the giant spike inflates sigma so the three-sigma threshold line sits high and a moderate anomaly on day 71 hides below it. On the right, with the spike removed sigma shrinks, the threshold drops, and day 71 now crosses it and is flagged">
+        <style>
+          .b2mT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .b2mL { font: 700 12.5px Inter, sans-serif; fill: #1F2937; }
+          .b2mX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b2mN { font: 600 12px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b2mT" x="24" y="26">Same day 71 - masked, then caught</text>
+        <!-- LEFT PANEL -->
+        <text class="b2mL" x="60" y="56">With the giant spike in the data</text>
+        <rect x="60" y="66" width="360" height="170" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <!-- threshold line high -->
+        <line x1="72" y1="98" x2="408" y2="98" stroke="#DC2626" stroke-width="2" stroke-dasharray="5 4"/>
+        <text class="b2mN" x="72" y="92">+3σ threshold (high)</text>
+        <!-- bulk points low -->
+        <g fill="#4B5563">
+          <circle cx="100" cy="190" r="4"/><circle cx="128" cy="184" r="4"/><circle cx="156" cy="192" r="4"/>
+          <circle cx="184" cy="186" r="4"/><circle cx="212" cy="194" r="4"/><circle cx="240" cy="185" r="4"/>
+          <circle cx="268" cy="192" r="4"/><circle cx="296" cy="187" r="4"/><circle cx="324" cy="193" r="4"/>
+        </g>
+        <!-- giant spike near top -->
+        <circle cx="384" cy="80" r="6" fill="#DC2626"/>
+        <text class="b2mN" x="338" y="74">spike</text>
+        <!-- moderate anomaly day 71, below threshold = hidden -->
+        <circle cx="352" cy="150" r="6" fill="#9CA3AF"/>
+        <text class="b2mX" x="300" y="168">day 71 hides below</text>
+        <!-- RIGHT PANEL -->
+        <text class="b2mL" x="470" y="56">Spike removed, σ shrinks</text>
+        <rect x="470" y="66" width="360" height="170" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <!-- threshold line lower -->
+        <line x1="482" y1="140" x2="818" y2="140" stroke="#DC2626" stroke-width="2" stroke-dasharray="5 4"/>
+        <text class="b2mN" x="482" y="134">+3σ threshold (drops)</text>
+        <g fill="#4B5563">
+          <circle cx="510" cy="190" r="4"/><circle cx="538" cy="184" r="4"/><circle cx="566" cy="192" r="4"/>
+          <circle cx="594" cy="186" r="4"/><circle cx="622" cy="194" r="4"/><circle cx="650" cy="185" r="4"/>
+          <circle cx="678" cy="192" r="4"/><circle cx="706" cy="187" r="4"/><circle cx="734" cy="193" r="4"/>
+        </g>
+        <!-- moderate anomaly now above threshold = caught -->
+        <circle cx="762" cy="118" r="6" fill="#DC2626"/>
+        <text class="b2mN" x="710" y="112">day 71 caught</text>
+        <text class="b2mX" x="24" y="272">The value of day 71 never changed. Only the giant outlier's grip on the standard deviation did - that grip is what was hiding it.</text>
+        <text class="b2mX" x="24" y="290">Robust MAD and IQR never had this problem, because a lone spike cannot move a median or a quartile.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - masking: the outlier inflates the very band meant to catch its neighbours</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why 1.5, 3, and 3.5? The magic constants<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The thresholds are conventions, not laws - tune them to your precision/recall need:</p>
+        <ul>
+          <li><strong>3σ</strong> - for a normal distribution about 99.7% of data sits inside ±3σ, so ~0.3% is flagged. If your data has fat tails, expect more false alarms.</li>
+          <li><strong>1.5·IQR</strong> - Tukey's original choice for a "boxplot outlier". 3·IQR marks "far out" points. Lower it to flag more, raise it to flag less.</li>
+          <li><strong>0.6745 and 3.5</strong> - <code>0.6745</code> rescales MAD so that, on normal data, the modified z-score matches an ordinary z-score. Iglewicz and Hoaglin recommend flagging above 3.5. All three constants are levers on the same alert-fatigue trade-off.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Three detectors, scored side by side <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Rebuild the Lumen series, run all three thresholds, and score each against the truth. Watch the robust pair beat the plain z-score on the same data.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled series from b1 so the notebook runs standalone.</p></div>
+      <div class="step"><p>Compute z-score flags, IQR / Tukey flags, and MAD modified-z flags.</p></div>
+      <div class="step"><p>Print each detector's flagged days and its precision, recall, and F1 against <code>truth</code>.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - z-score vs IQR vs MAD</span>import pandas as pd, numpy as np
+
+# --- rebuild the labeled Lumen series (from b1) so this runs standalone ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110]); i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+y = y.astype(float)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380                              # point spike, point drop
+y[63] = y[63] - season[63 % 7] + season[6] - 40         # contextual dip
+y[[70,71,72]] += [175,190,170]                          # collective run
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+def score(flags, name):
+    f = set(int(k) for k in flags); t = set(truth)
+    tp = len(f &amp; t); fp = len(f - t); fn = len(t - f)
+    p = tp/(tp+fp) if tp+fp else 0
+    r = tp/(tp+fn) if tp+fn else 0
+    f1 = 2*p*r/(p+r) if p+r else 0
+    print(f"{name:9s} caught {tp}/{len(t)}  P {p:.2f}  R {r:.2f}  F1 {f1:.2f}  {sorted(f)}")
+
+# 1) plain z-score / three-sigma
+z = (s - s.mean()) / s.std()
+score(np.where(np.abs(z) &gt; 3)[0], "z-score")
+
+# 2) IQR / Tukey fences - quartiles are robust to outliers
+q1, q3 = s.quantile(0.25), s.quantile(0.75); iqr = q3 - q1
+lo, hi = q1 - 1.5*iqr, q3 + 1.5*iqr
+score(np.where((s &lt; lo) | (s &gt; hi))[0], "IQR")
+
+# 3) robust MAD - modified z-score
+med = s.median(); mad = (s - med).abs().median()
+mz = 0.6745 * (s - med) / mad
+score(np.where(np.abs(mz) &gt; 3.5)[0], "MAD")
+
+# z-score   caught 2/6  P 1.00  R 0.33  F1 0.50  [20, 45]
+# IQR       caught 5/6  P 1.00  R 0.83  F1 0.91  [20, 45, 70, 71, 72]
+# MAD       caught 4/6  P 1.00  R 0.67  F1 0.80  [20, 45, 71, 72]</div>
+
+    <div class="callout tip">
+      <strong>Read the scoreboard, not the vibe</strong>
+      All three keep precision at 1.00 - nothing false-flagged. The story is in recall: the plain z-score catches only the two giant point anomalies (0.33), while IQR reaches 0.83 and MAD 0.67 by also flagging the moderate collective run. Same series, same three-line effort - the robust statistic is what buys the extra catches.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Watch masking happen <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Now prove the flaw directly. The collective-run days sit hidden inside the z-score band. Remove the two giant point anomalies that were inflating the standard deviation, recompute, and watch the hidden days climb across the threshold - value unchanged, only the band moved.</p>
+
+    <div class="steps">
+      <div class="step"><p>Print the z-score of the collective-run days with the giant spike and drop still in the series - all below 3, all masked.</p></div>
+      <div class="step"><p>Drop the two giant point anomalies and recompute the z-score.</p></div>
+      <div class="step"><p>See the standard deviation shrink and days 71 and 72 cross the threshold - the definition of masking.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - unmasking a hidden anomaly</span>import numpy as np
+# (continues from Demo 1: s and truth already defined)
+
+z = (s - s.mean()) / s.std()
+print("WITH the giant spike + drop:")
+print(f"  std = {s.std():.1f}")
+for d in [70, 71, 72]:
+    print(f"  day {d}: z = {z.iloc[d]:.2f}  {'&lt; 3 (masked)' if abs(z.iloc[d]) &lt; 3 else '&gt; 3 (caught)'}")
+
+# strip the two giant point anomalies that inflate the std
+s2 = s.drop(s.index[[20, 45]])
+z2 = (s2 - s2.mean()) / s2.std()
+print("\nWITHOUT the giant spike + drop:")
+print(f"  std = {s2.std():.1f}   (it shrank)")
+for d in [70, 71, 72]:
+    zd = z2.loc[s.index[d]]
+    print(f"  day {d}: z = {zd:.2f}  {'&lt; 3 (masked)' if abs(zd) &lt; 3 else '&gt; 3 (caught)'}")
+
+# WITH:    std 94.9  -> day 71 z 2.87, day 72 z 2.69  (all masked)
+# WITHOUT: std 83.1  -> day 71 z 3.27, day 72 z 3.07  (now caught)
+# the days never changed value - the giant outliers were hiding them</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is why "just use a z-score" quietly fails in production.</strong> The loudest anomaly in your window sets the threshold for every other point, so the biggest incident actively conceals the medium ones around it. You cannot see masking by staring at the output - a masked anomaly leaves no trace. You catch it by defaulting to robust statistics (MAD, IQR) or by removing known outliers before you fit the threshold. When in doubt, reach for the median.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run all three detectors and confirm the precision/recall/F1 you get matches the commented output.</li>
+      <li>Sweep the z-score cutoff from 2.0 to 4.0 in steps of 0.25 and plot recall against the number of false flags. Where would you set it, and why?</li>
+      <li>Change the MAD cutoff from 3.5 to 3.0 and to 4.0. Watch precision and recall trade off - this is the alert-fatigue dial.</li>
+      <li>Reproduce masking on your own: add a second giant spike to the series, confirm a previously caught anomaly disappears, then remove both spikes and watch it return.</li>
+      <li>Optional: skim the scikit-learn "Novelty and Outlier Detection" user guide section on robust covariance to preview b6.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the statistical-detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">scikit-learn "Novelty and Outlier Detection" user guide + <code>statsmodels</code> / <code>scipy</code></span><span class="note">Parts 1-2 · z-score, IQR / Tukey fences, robust MAD in practice</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Part 1 · statistical technique family, parametric vs non-parametric thresholds</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What is the fatal flaw of the plain z-score / three-sigma rule?</p>
+      <button class="qopt" type="button">A · It can only flag values that are too high, never too low</button>
+      <button class="qopt" type="button">B · Its own outliers inflate the mean and standard deviation, so the band widens and masks moderate anomalies</button>
+      <button class="qopt" type="button">C · It is far too slow to compute on large series</button>
+      <p class="qwhy">Masking: the mean and std are computed from data that includes the anomalies, so a giant outlier fattens the ±3σ band until the moderate anomalies fall inside it.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · The Tukey / IQR fences flag a point outside which range?</p>
+      <button class="qopt" type="button">A · mean − 3·std to mean + 3·std</button>
+      <button class="qopt" type="button">B · median − MAD to median + MAD</button>
+      <button class="qopt" type="button">C · Q1 − 1.5·IQR to Q3 + 1.5·IQR, where IQR = Q3 − Q1</button>
+      <p class="qwhy">The fences are built on quartiles, which ignore the extreme tails - so a lone outlier cannot widen them the way it widens a standard deviation.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why is the MAD-based modified z-score the most outlier-resistant of the three?</p>
+      <button class="qopt" type="button">A · The median and MAD have the highest breakdown point - roughly half the data must be corrupt before they move</button>
+      <button class="qopt" type="button">B · It uses a larger threshold, so it flags fewer points</button>
+      <button class="qopt" type="button">C · It ignores the median entirely and uses only the mean</button>
+      <p class="qwhy">Median and MAD barely budge when a few points explode, so the threshold built on them stays honest - unlike the mean and std, which any single giant outlier can drag.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>z-score / 3σ</b><span>flag |x − mean|/std &gt; 3. Fast, but its own outliers inflate the band. Baseline only.</span></div>
+      <div class="cheat-item"><b>IQR / Tukey</b><span>flag below Q1 − 1.5·IQR or above Q3 + 1.5·IQR. Quartiles make it robust.</span></div>
+      <div class="cheat-item"><b>Robust MAD</b><span>flag |0.6745·(x − median)/MAD| &gt; 3.5. Median + MAD resist outliers best.</span></div>
+      <div class="cheat-item"><b>Masking</b><span>a giant outlier inflates the std, widening the band so moderate anomalies hide inside.</span></div>
+      <div class="cheat-item"><b>Swamping</b><span>the mirror: outliers stretch the band so far that normal points get wrongly flagged.</span></div>
+      <div class="cheat-item"><b>On Lumen</b><span>z-score F1 0.50, IQR F1 0.91, MAD F1 0.80 - robust statistics buy the extra catches.</span></div>
+      <div class="cheat-item"><b>Breakdown point</b><span>how much of the data can be corrupt before a statistic lies. Median ≈ 50%, mean ≈ 0%.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b3 - rolling &amp; seasonal: judge each point against its local context, not the whole series.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 2 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b1-anomaly-foundations.html">← Prev: Anomaly foundations</a> &nbsp;·&nbsp; <a href="b3-rolling-seasonal.html">Next: Rolling &amp; seasonal →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

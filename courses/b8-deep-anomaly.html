@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 8 · Deep anomaly detection - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 8 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 8 of 10</div>
+    <h1>Deep anomaly detection: <span class="accent">a map, honestly drawn</span></h1>
+    <p class="sub">This session is a guided map of the published deep methods, not a from-scratch build. We cover the one idea that unifies them - reconstruction error - and show a small, runnable illustration of it (PCA as a linear autoencoder), plus a clearly-labelled API sketch of a real autoencoder. Training a deep model properly needs a lot of normal data, tuning, and compute, and belongs in a dedicated deep-learning course. What matters tonight is the intuition, the citation trail, and an honest read on when deep methods are worth it.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · a notebook</span>
+      <span class="chip time">~45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Reconstruction error + autoencoders</span>
+      <span class="a3" style="flex:5">18-42 · PCA sketch + API sketch</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The one idea: reconstruction error</h2>
+    </div>
+    <p class="lede">Almost every deep anomaly detector rests on a single move. Train a model to <strong>compress and then rebuild normal data</strong>. Force the information through a narrow bottleneck and the model can only learn to reproduce the patterns it saw most - the normal ones. Feed it a normal point and it rebuilds it well; feed it an anomaly and it rebuilds it badly, because it never learned that shape. The size of that rebuild miss - the <strong>reconstruction error</strong> - is the anomaly score. That is the whole thesis, and it survives from linear PCA all the way to deep autoencoders.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A clear grip on reconstruction error as the anomaly score, one runnable illustration of it (PCA reconstruction on a windowed Lumen matrix, scored against <code>truth</code>), an API sketch of a Keras autoencoder you can carry into a real project, and an honest map of LSTM-autoencoders, deep one-class, and VAEs - with the frank caveat that on a single low-dimensional series they often do not beat an isolation forest or a good seasonal detector.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: AUTOENCODER ============ -->
+  <section class="section" id="autoencoder">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the autoencoder</span>
+      <h2>Compress, rebuild, measure the miss <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">An autoencoder is two halves. The <strong>encoder</strong> squeezes an input into a small latent vector; the <strong>decoder</strong> expands that vector back toward the original. Train it only on normal data with a reconstruction loss, and the bottleneck forces it to keep just the structure that normal data shares. Anomalies do not share that structure, so they come back distorted - and that distortion is the score.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An autoencoder funnel: input compresses through an encoder to a small latent code, then a decoder rebuilds it; a normal input reconstructs well with low error, an anomaly reconstructs badly with high error flagged red">
+        <style>
+          .b8aT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b8aW { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .b8aX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b8aN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b8aT" x="24" y="26">Encoder squeezes to a latent code; decoder rebuilds it</text>
+        <!-- encoder trapezoid -->
+        <polygon points="120,70 260,120 260,180 120,230" fill="#4B5563"/>
+        <text class="b8aW" x="150" y="154">encode</text>
+        <!-- latent -->
+        <rect x="392" y="118" width="96" height="64" rx="10" fill="#1F2937"/>
+        <text class="b8aW" x="410" y="146">latent</text>
+        <text class="b8aW" x="410" y="166">code</text>
+        <!-- decoder trapezoid -->
+        <polygon points="620,120 760,70 760,230 620,180" fill="#4B5563"/>
+        <text class="b8aW" x="648" y="154">decode</text>
+        <!-- input nodes -->
+        <text class="b8aX" x="40" y="60">input x</text>
+        <g fill="#9CA3AF">
+          <circle cx="64" cy="96" r="6"/><circle cx="64" cy="126" r="6"/><circle cx="64" cy="156" r="6"/><circle cx="64" cy="186" r="6"/><circle cx="64" cy="216" r="6"/>
+        </g>
+        <!-- output nodes -->
+        <text class="b8aX" x="792" y="60">rebuilt x-hat</text>
+        <g fill="#9CA3AF">
+          <circle cx="816" cy="96" r="6"/><circle cx="816" cy="126" r="6"/><circle cx="816" cy="156" r="6"/><circle cx="816" cy="186" r="6"/><circle cx="816" cy="216" r="6"/>
+        </g>
+        <!-- arrows -->
+        <line x1="80" y1="156" x2="116" y2="156" stroke="#D1D5DB" stroke-width="2"/>
+        <line x1="264" y1="150" x2="388" y2="150" stroke="#D1D5DB" stroke-width="2"/>
+        <line x1="492" y1="150" x2="616" y2="150" stroke="#D1D5DB" stroke-width="2"/>
+        <line x1="764" y1="156" x2="800" y2="156" stroke="#D1D5DB" stroke-width="2"/>
+        <!-- verdict badges -->
+        <rect x="24" y="252" width="404" height="34" rx="8" fill="#F3F4F6"/>
+        <rect x="24" y="252" width="14" height="34" rx="3" fill="#4B5563"/>
+        <text class="b8aT" x="48" y="273">Normal in: rebuilt well - low recon error</text>
+        <rect x="452" y="252" width="404" height="34" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <rect x="452" y="252" width="14" height="34" rx="3" fill="#DC2626"/>
+        <text class="b8aN" x="476" y="273">Anomaly in: rebuilt badly - high error = flagged</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the autoencoder bottleneck and reconstruction error</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The deep family, in one breath each<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Autoencoder</strong> - the base case above. Reconstruction error is the score.</li>
+          <li><strong>LSTM-autoencoder</strong> - the same idea for <em>sequences</em>. It reconstructs a whole window of a time series; a window it rebuilds poorly is an anomalous stretch. This is the natural deep cousin of the forecast-residual detector in b7.</li>
+          <li><strong>Deep one-class / VAE</strong> - a one-line nod: Deep SVDD learns a tight boundary around normal in a learned space, and a variational autoencoder scores by reconstruction probability. Same spirit, different machinery.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world · honest read</span>
+          <p><strong>Deep is not a free upgrade.</strong> Autoencoders need a lot of clean normal data, careful architecture and threshold tuning, and compute - and on a single low-dimensional series they frequently do <em>not</em> beat an isolation forest (b5) or a good seasonal detector (b3, b7). Reach for deep methods when the data is genuinely high-dimensional or complex - images, logs, multivariate sensor streams - where the structure a shallow model cannot capture is exactly where anomalies hide.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: ERROR AS SCORE ============ -->
+  <section class="section" id="score">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · error becomes the score</span>
+      <h2>Reconstruction error over time <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Once trained, the detector is simple: push every point (or window) through, measure how far the rebuild lands from the original, and threshold that error. Plot the error over time and the anomalies announce themselves - normal points hug a low baseline, anomalies spike above the line. The threshold is the usual precision/recall decision, and setting it on a clean stretch of normal errors is the whole game.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reconstruction error plotted over time: most points sit as short charcoal bars below a dashed threshold, a few spike above it and are drawn red as flagged anomalies">
+        <style>
+          .b8rT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b8rX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b8rN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b8rT" x="24" y="26">Reconstruction error per point = the anomaly score</text>
+        <!-- axis -->
+        <line x1="48" y1="210" x2="840" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <text class="b8rX" x="24" y="214">0</text>
+        <!-- threshold line -->
+        <line x1="48" y1="120" x2="840" y2="120" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <text class="b8rN" x="748" y="114">threshold</text>
+        <!-- normal bars (charcoal, short) -->
+        <g fill="#4B5563">
+          <rect x="60" y="188" width="14" height="22" rx="2"/>
+          <rect x="90" y="182" width="14" height="28" rx="2"/>
+          <rect x="120" y="192" width="14" height="18" rx="2"/>
+          <rect x="150" y="186" width="14" height="24" rx="2"/>
+          <rect x="180" y="190" width="14" height="20" rx="2"/>
+          <rect x="240" y="184" width="14" height="26" rx="2"/>
+          <rect x="270" y="192" width="14" height="18" rx="2"/>
+          <rect x="300" y="188" width="14" height="22" rx="2"/>
+          <rect x="330" y="182" width="14" height="28" rx="2"/>
+          <rect x="390" y="190" width="14" height="20" rx="2"/>
+          <rect x="420" y="186" width="14" height="24" rx="2"/>
+          <rect x="450" y="192" width="14" height="18" rx="2"/>
+          <rect x="510" y="184" width="14" height="26" rx="2"/>
+          <rect x="540" y="188" width="14" height="22" rx="2"/>
+          <rect x="600" y="190" width="14" height="20" rx="2"/>
+          <rect x="630" y="186" width="14" height="24" rx="2"/>
+          <rect x="660" y="182" width="14" height="28" rx="2"/>
+          <rect x="720" y="190" width="14" height="20" rx="2"/>
+          <rect x="750" y="186" width="14" height="24" rx="2"/>
+          <rect x="810" y="188" width="14" height="22" rx="2"/>
+        </g>
+        <!-- anomaly bars (red, above threshold) -->
+        <g fill="#DC2626">
+          <rect x="210" y="66" width="14" height="144" rx="2"/>
+          <rect x="360" y="84" width="14" height="126" rx="2"/>
+          <rect x="570" y="72" width="14" height="138" rx="2"/>
+          <rect x="690" y="96" width="14" height="114" rx="2"/>
+        </g>
+        <!-- legend -->
+        <rect x="48" y="238" width="16" height="16" rx="3" fill="#4B5563"/>
+        <text class="b8rX" x="72" y="251">normal - low error</text>
+        <rect x="240" y="238" width="16" height="16" rx="3" fill="#DC2626"/>
+        <text class="b8rN" x="264" y="251">error above threshold = anomaly</text>
+        <text class="b8rX" x="560" y="251">time →</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - reconstruction error as the anomaly score, thresholded</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The three ways this bites you<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Reconstruction-error detectors fail in predictable ways - know them before you ship one:</p>
+        <ul>
+          <li><strong>Contaminated training</strong> - if anomalies leak into the "normal" training set, the model learns to rebuild them too, and stops flagging them. Curate the normal sample.</li>
+          <li><strong>Over-capacity</strong> - a bottleneck that is too wide (or a model too powerful) learns to rebuild <em>everything</em>, anomalies included, and the error signal collapses. The squeeze is the point.</li>
+          <li><strong>Threshold drift</strong> - as the normal regime shifts, yesterday's error threshold turns into today's false-alarm generator. Re-estimate it on fresh normal data.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2 · runnable</span>
+      <h2>PCA reconstruction error <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">The concept made concrete, and actually runnable. PCA <em>is</em> a linear autoencoder: project each window onto a few components, then project back. Normal windows rebuild well; the anomalous ones rebuild badly, and the squared rebuild error is the anomaly score - no deep-learning library required.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled Lumen series (from b1) so the notebook runs standalone.</p></div>
+      <div class="step"><p>Turn the series into a feature matrix of overlapping 7-day windows.</p></div>
+      <div class="step"><p>Fit PCA, reconstruct, and take the per-window squared error as the score.</p></div>
+      <div class="step"><p>Threshold robustly and score precision, recall, and F1 against <code>truth</code>.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - PCA as a linear autoencoder</span>import pandas as pd, numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
+from sklearn.decomposition import PCA
+
+# --- rebuild the labeled Lumen series (from b1) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110])
+i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+# --- windows -> PCA reconstruction error (a linear autoencoder) ---
+v = ((s - s.mean()) / s.std()).to_numpy()
+w = 7
+X = sliding_window_view(v, w)                 # (84, 7) overlapping windows
+pca = PCA(n_components=2).fit(X)              # bottleneck = 2 components
+Xr = pca.inverse_transform(pca.transform(X)) # encode then decode
+err = ((X - Xr) ** 2).mean(axis=1)           # reconstruction error per window
+
+# map each window's error to its last day, then threshold robustly
+score = np.full(len(s), np.nan); score[w-1:] = err
+m = np.nanmedian(err); iqr = np.nanpercentile(err,75) - np.nanpercentile(err,25)
+flags = set(np.where(score &gt; m + 3*iqr)[0])
+
+tp = len(flags &amp; set(truth)); fp = len(flags - set(truth)); fn = len(set(truth) - flags)
+prec = tp/(tp+fp) if tp+fp else 0; rec = tp/(tp+fn) if tp+fn else 0
+f1 = 2*prec*rec/(prec+rec) if prec+rec else 0
+print(f"PCA-recon caught {tp}/{len(truth)}  precision {prec:.2f}  recall {rec:.2f}  F1 {f1:.2f}")
+# a linear autoencoder; a deep one replaces PCA with a nonlinear encoder/decoder</div>
+
+    <div class="callout tip">
+      <strong>This is the honest bridge to deep</strong>
+      PCA reconstruction error is the deep idea stripped to linear algebra - runnable in seconds, no GPU. A real autoencoder swaps the linear projection for a nonlinear network, which helps only when the normal structure is genuinely nonlinear. If PCA-recon already ties your isolation forest here, that is your signal that this series does not need deep at all.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2 · sketch, not run</span>
+      <h2>Autoencoder API sketch <span class="tag demo">○ read-through · not executed</span></h2>
+    </div>
+    <p class="lede">What the deep version looks like in code. This is an <strong>API sketch</strong> - the shape of a Keras autoencoder so you recognise it in the wild - not a trained model. It needs the library, a lot of clean normal data, and compute, none of which we run here.</p>
+
+    <div class="steps">
+      <div class="step"><p>Build a symmetric encoder / decoder with a narrow bottleneck.</p></div>
+      <div class="step"><p>Train it to reconstruct <strong>normal-only</strong> data with a reconstruction loss.</p></div>
+      <div class="step"><p>Score by per-sample reconstruction error; threshold on a held-out normal set.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">○ API sketch - needs the library + data + compute; not run here</span># SKETCH ONLY - illustrative Keras API, not executed in this notebook.
+from tensorflow import keras
+from tensorflow.keras import layers
+
+n_features = 7                       # e.g. a 7-day window
+ae = keras.Sequential([
+    layers.Input(shape=(n_features,)),
+    layers.Dense(16, activation="relu"),   # encoder
+    layers.Dense(4,  activation="relu"),   # bottleneck (the squeeze)
+    layers.Dense(16, activation="relu"),   # decoder
+    layers.Dense(n_features),              # rebuild
+])
+ae.compile(optimizer="adam", loss="mse")
+
+# train on NORMAL data only, so anomalies stay un-learned
+# ae.fit(X_normal, X_normal, epochs=50, batch_size=32, validation_split=0.1)
+
+# score = per-sample reconstruction error; threshold on held-out normal
+# recon = ae.predict(X)
+# err   = ((X - recon) ** 2).mean(axis=1)
+# flags = err &gt; threshold_from_normal(err_normal)   # e.g. 99th percentile
+#
+# for sequences, swap Dense for an LSTM encoder/decoder (LSTM-autoencoder):
+# it reconstructs a WINDOW of the series; a poorly-rebuilt window = anomalous stretch.</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world · re-verify</span>
+      <p><strong>This area moves fast - treat any survey as a snapshot.</strong> The map here follows Pang, Shen, Cao &amp; van den Hengel (2021), "Deep Learning for Anomaly Detection: A Review" (ACM Computing Surveys 54(2); arXiv:2007.02500). Before you commit to a deep method for a real system, re-verify the current state of the art and, just as importantly, benchmark it against the shallow detectors from this course - deep should have to <em>earn</em> its complexity on your data, not win by reputation.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run the PCA-reconstruction detector and record its precision, recall, and F1. Which anomalies does it catch, and which slip through?</li>
+      <li>Sweep the number of PCA components from 1 to 5. Watch the error signal collapse as the bottleneck widens toward "rebuild everything."</li>
+      <li>Put PCA-recon head to head with your isolation forest (b5) and forecast-residual detector (b7) on the same series. Does the deeper idea actually win here?</li>
+      <li>Read the abstract and taxonomy figure of Pang et al. (2021) and list which method families the paper flags as strongest for high-dimensional data.</li>
+      <li>Optional: sketch how you would curate a clean "normal-only" training set for a real autoencoder - where would contamination sneak in?</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">A surveyed map, not a from-scratch build. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Pang, Shen, Cao &amp; van den Hengel (2021), "Deep Learning for Anomaly Detection: A Review," ACM Computing Surveys 54(2); arXiv:2007.02500</span><span class="note">Parts 1-2 · reconstruction error, autoencoders, LSTM-AE, deep one-class / VAE</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn PCA · decomposition user guide</span><span class="note">Demo 1 · PCA as a linear autoencoder (runnable illustration)</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · In a reconstruction-based detector, what is the anomaly score?</p>
+      <button class="qopt" type="button">A · The size of the latent code</button>
+      <button class="qopt" type="button">B · The number of training epochs</button>
+      <button class="qopt" type="button">C · The reconstruction error - how badly the model rebuilds the point after compressing it</button>
+      <p class="qwhy">The model learns to rebuild normal data through a bottleneck. Anomalies were never learned, so they come back distorted; that distortion (the reconstruction error) is the score.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · When are deep methods most worth the extra cost?</p>
+      <button class="qopt" type="button">A · Always - they beat everything</button>
+      <button class="qopt" type="button">B · On genuinely high-dimensional or complex data (images, logs, multivariate streams), not a single low-dimensional series</button>
+      <button class="qopt" type="button">C · Only when you have labelled anomalies</button>
+      <p class="qwhy">On one low-dimensional series, an isolation forest or seasonal detector often matches or beats an autoencoder. Deep pays off where the structure is too complex for a shallow model.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why does PCA reconstruction error illustrate the deep idea?</p>
+      <button class="qopt" type="button">A · PCA is a linear autoencoder - it compresses to a few components and rebuilds, so its rebuild error is reconstruction error without a GPU</button>
+      <button class="qopt" type="button">B · PCA uses an LSTM internally</button>
+      <button class="qopt" type="button">C · PCA can only be trained on anomalies</button>
+      <p class="qwhy">Projecting onto a few components then back is exactly encode-then-decode. A deep autoencoder just replaces that linear projection with a nonlinear network.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 8 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Reconstruction error</b><span>train to rebuild normal; anomalies rebuild badly. The miss is the score.</span></div>
+      <div class="cheat-item"><b>Autoencoder</b><span>encoder squeezes to a latent code, decoder rebuilds. Bottleneck keeps only normal structure.</span></div>
+      <div class="cheat-item"><b>LSTM-AE</b><span>same idea for sequences - reconstruct a window; poorly-rebuilt window = anomalous stretch.</span></div>
+      <div class="cheat-item"><b>Deep one-class / VAE</b><span>Deep SVDD boundary; VAE reconstruction probability. Same spirit.</span></div>
+      <div class="cheat-item"><b>PCA = linear AE</b><span>project to few components and back; runnable reconstruction error, no GPU.</span></div>
+      <div class="cheat-item"><b>Honest read</b><span>deep needs lots of clean normal data + tuning + compute; often no better on one low-dim series.</span></div>
+      <div class="cheat-item"><b>Cite + re-verify</b><span>Pang et al. (2021), arXiv:2007.02500. This area moves fast - benchmark deep against shallow.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b9 - evaluation: precision/recall/F1, PR-AUC, point-adjust, threshold tuning.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 8 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b9-evaluation.html">Next: Evaluation →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

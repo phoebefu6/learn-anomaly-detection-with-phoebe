@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 5 · Isolation Forest - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 5 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 5 of 10</div>
+    <h1>Isolation Forest: <span class="accent">the ones that isolate fast</span></h1>
+    <p class="sub">Every detector so far measured how far a point sits from normal. Isolation Forest flips the question: instead of modelling normal, it asks how easy a point is to cut off from the rest. Anomalies are few and different, so a few random splits isolate them - while a normal point buried in the crowd takes many. This session builds a feature matrix from the Lumen series, fits scikit-learn's IsolationForest, reads its scores, and confronts the one knob that decides everything: contamination.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · scikit-learn</span>
+      <span class="chip time">45 minutes</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · The isolation idea</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: fit + tune</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>A different question entirely</h2>
+    </div>
+    <p class="lede">In b4 you scored points by how dense their neighbourhood was - kNN distance and the Local Outlier Factor. Those need a distance metric and slow down as the data grows. Tonight's method, Isolation Forest (Liu, Ting &amp; Zhou, 2008), needs neither. It builds an ensemble of random trees that recursively cut the data with random splits, and simply counts how many cuts it takes to isolate each point. Anomalies fall out in a handful of cuts; normal points hide deep in the tree. It is fast, it scales to large and high-dimensional data, and it has become the default first reach for tabular anomaly detection.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A feature matrix built from the Lumen series (value, lags, rolling stats), a fitted <code>IsolationForest</code> scored honestly with precision and recall, a feel for reading <code>score_samples</code> to rank the most anomalous days, and a hard-won understanding of what the <code>contamination</code> parameter really does - it sets your threshold.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE ISOLATION IDEA ============ -->
+  <section class="section" id="isolation">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers Liu, Ting &amp; Zhou 2008</span>
+      <h2>Few and different isolate fast <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">The core insight is almost too simple. Pick a random feature, pick a random split value, and cut. Repeat until every point sits alone. A point that is <em>different</em> from the rest gets separated in very few cuts; a point deep inside a dense cluster needs many. The number of cuts to isolate a point - its <strong>path length</strong> - is the anomaly signal. Short path means anomalous.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A few random axis-parallel splits isolate a lone outlier quickly, while a point inside a dense cluster needs many splits to isolate">
+        <style>
+          .b5iT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b5iX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b5iN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b5iT" x="24" y="26">Anomalies are few and different, so they isolate fast</text>
+        <!-- Panel A -->
+        <rect x="40" y="44" width="370" height="210" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="b5iT" x="56" y="68">Isolate the lone outlier</text>
+        <g fill="#4B5563">
+          <circle cx="95" cy="210" r="5"/><circle cx="115" cy="225" r="5"/><circle cx="135" cy="200" r="5"/>
+          <circle cx="150" cy="222" r="5"/><circle cx="120" cy="235" r="5"/><circle cx="165" cy="210" r="5"/>
+          <circle cx="100" cy="235" r="5"/><circle cx="145" cy="235" r="5"/><circle cx="175" cy="225" r="5"/>
+          <circle cx="118" cy="198" r="5"/>
+        </g>
+        <!-- two random splits isolate the outlier region -->
+        <line x1="290" y1="78" x2="290" y2="248" stroke="#DC2626" stroke-width="1.6" stroke-dasharray="4 4"/>
+        <line x1="290" y1="140" x2="404" y2="140" stroke="#DC2626" stroke-width="1.6" stroke-dasharray="4 4"/>
+        <circle cx="350" cy="105" r="6" fill="#DC2626"/>
+        <text class="b5iX" x="300" y="98">outlier</text>
+        <text class="b5iN" x="56" y="246">2 splits - short path</text>
+        <!-- Panel B -->
+        <rect x="470" y="44" width="370" height="210" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="b5iT" x="486" y="68">Isolate a point in the crowd</text>
+        <g fill="#4B5563">
+          <circle cx="525" cy="200" r="5"/><circle cx="545" cy="222" r="5"/><circle cx="580" cy="205" r="5"/>
+          <circle cx="600" cy="222" r="5"/><circle cx="550" cy="188" r="5"/><circle cx="615" cy="200" r="5"/>
+          <circle cx="530" cy="225" r="5"/><circle cx="595" cy="235" r="5"/><circle cx="625" cy="220" r="5"/>
+          <circle cx="570" cy="235" r="5"/>
+        </g>
+        <!-- many splits to isolate an interior point -->
+        <line x1="545" y1="170" x2="545" y2="248" stroke="#6B7280" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <line x1="600" y1="170" x2="600" y2="248" stroke="#6B7280" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <line x1="525" y1="185" x2="640" y2="185" stroke="#6B7280" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <line x1="525" y1="228" x2="640" y2="228" stroke="#6B7280" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <circle cx="572" cy="205" r="6" fill="#4B5563" stroke="#111827" stroke-width="2"/>
+        <text class="b5iN" x="486" y="246">many splits - long path</text>
+        <rect x="24" y="272" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b5iN" x="46" y="284">Few and different means fewer cuts to isolate. Average path length is the score - short = anomalous.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - short path isolates the outlier, long path buries the normal point</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why this beats distance methods at scale<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>No distance metric</strong> - it only ever compares a value to a random split, so it sidesteps the curse of dimensionality that bloats kNN and LOF distances.</li>
+          <li><strong>Near-linear time</strong> - each tree is built on a small subsample (256 points by default), so it stays fast on millions of rows and many features.</li>
+          <li><strong>Ensemble, not one tree</strong> - a single random tree is luck; averaging path length over a forest of them gives a stable, smooth anomaly score.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Isolation Forest is the workhorse of tabular anomaly detection.</strong> Fraud teams, infrastructure monitoring, and manufacturing QA reach for it first because it needs almost no tuning, handles dozens of features, and does not assume any shape for normal. When someone says "we threw an anomaly model at it," this is usually the model.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: PATH LENGTH -> SCORE ============ -->
+  <section class="section" id="score">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · from trees to a score</span>
+      <h2>Average path length becomes the score <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">One random tree is noisy - a lucky split could isolate a normal point early. So the forest builds many trees and averages each point's path length across all of them. Short average path across the ensemble means the point was consistently easy to cut off: anomalous. scikit-learn wraps this in <code>score_samples</code> (lower = more anomalous) and <code>decision_function</code> (the same, shifted so negative means flagged).</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An ensemble of three random isolation trees each produce a path length for the outlier; averaging them gives a short average path and a high anomaly score">
+        <style>
+          .b5eT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b5eX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b5eW { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .b5eI { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b5eN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b5eT" x="24" y="26">An ensemble of random trees averages the path length</text>
+        <!-- Tree A -->
+        <line x1="150" y1="66" x2="120" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="150" y1="66" x2="180" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <circle cx="150" cy="60" r="5" fill="#4B5563"/>
+        <circle cx="120" cy="105" r="5" fill="#4B5563"/>
+        <circle cx="180" cy="105" r="6" fill="#DC2626"/>
+        <text class="b5eX" x="112" y="150">path = 2</text>
+        <!-- Tree B -->
+        <line x1="390" y1="66" x2="360" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="390" y1="66" x2="420" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="420" y1="110" x2="400" y2="140" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="420" y1="110" x2="445" y2="140" stroke="#D1D5DB" stroke-width="1.5"/>
+        <circle cx="390" cy="60" r="5" fill="#4B5563"/>
+        <circle cx="360" cy="105" r="5" fill="#4B5563"/>
+        <circle cx="420" cy="105" r="5" fill="#4B5563"/>
+        <circle cx="400" cy="145" r="5" fill="#4B5563"/>
+        <circle cx="445" cy="145" r="6" fill="#DC2626"/>
+        <text class="b5eX" x="352" y="180">path = 3</text>
+        <!-- Tree C -->
+        <line x1="630" y1="66" x2="600" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="630" y1="66" x2="660" y2="100" stroke="#D1D5DB" stroke-width="1.5"/>
+        <circle cx="630" cy="60" r="5" fill="#4B5563"/>
+        <circle cx="600" cy="105" r="5" fill="#4B5563"/>
+        <circle cx="660" cy="105" r="6" fill="#DC2626"/>
+        <text class="b5eX" x="592" y="150">path = 2</text>
+        <!-- average + score row -->
+        <rect x="140" y="212" width="250" height="54" rx="10" fill="#1F2937"/>
+        <text class="b5eW" x="160" y="238">average path = 2.3</text>
+        <text class="b5eX" x="160" y="256" style="fill:#E5E7EB">across the whole forest</text>
+        <line x1="392" y1="239" x2="464" y2="239" stroke="#D1D5DB" stroke-width="2"/>
+        <polygon points="464,234 474,239 464,244" fill="#D1D5DB"/>
+        <rect x="480" y="212" width="376" height="54" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b5eI" x="500" y="238">short average path</text>
+        <text class="b5eI" x="500" y="256" style="fill:#7F1D1D">-&gt; high anomaly score, flagged</text>
+        <rect x="24" y="284" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b5eN" x="46" y="296">Each tree is random luck; averaging many cancels it, leaving a stable score per point.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the forest averages path length into a single anomaly score</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The contamination trap<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Isolation Forest produces a continuous score for every point. To turn that into a yes/no flag it needs a threshold - and that is exactly what <code>contamination</code> sets. Tell it <code>contamination=0.05</code> and it will flag the lowest-scoring 5% of points, no matter what the data actually contains.</p>
+        <ul>
+          <li><strong>It is your assumed anomaly rate</strong> - a prior you supply, not something the model discovers.</li>
+          <li><strong>Set it too high</strong> and you flood the business with false alarms; the detector gets muted (alert fatigue).</li>
+          <li><strong>Set it too low</strong> and real anomalies slip through unflagged.</li>
+          <li><strong>You rarely know the true rate</strong> - so treat contamination as a dial you tune against precision and recall, or skip the flag entirely and rank by raw score.</li>
+        </ul>
+        <p>The safest habit: read the scores, rank the most anomalous days, and let a human set the cut where the cost of a miss balances the cost of a false alarm.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Fit Isolation Forest on Lumen <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Build a feature matrix from the Lumen series, fit the forest unsupervised, and score it against the ground-truth labels.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled Lumen series so the notebook runs standalone.</p></div>
+      <div class="step"><p>Engineer features: the value, a lag, and rolling mean and std - so the forest can see context, not just level.</p></div>
+      <div class="step"><p>Fit <code>IsolationForest</code>, read <code>predict</code> and <code>score_samples</code>, and score precision, recall, and F1.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - feature matrix + IsolationForest</span>import pandas as pd, numpy as np
+from sklearn.ensemble import IsolationForest
+
+# --- rebuild the labeled Lumen series (from b1) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110]); i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+# --- feature matrix: value + lags + rolling stats ---
+df = pd.DataFrame({"value": s})
+df["lag1"]  = s.shift(1)
+df["lag7"]  = s.shift(7)
+df["rmean"] = s.rolling(7, min_periods=1).mean()
+df["rstd"]  = s.rolling(7, min_periods=1).std()
+X = df.bfill().ffill().values
+
+# --- fit unsupervised on the features only ---
+iso   = IsolationForest(n_estimators=200, contamination=0.07, random_state=0).fit(X)
+pred  = iso.predict(X)             # -1 = anomaly, 1 = normal
+score = iso.score_samples(X)       # lower = more anomalous
+flags = set(np.where(pred == -1)[0])
+
+# --- score vs truth (labels used ONLY for scoring) ---
+t = set(truth)
+tp = len(flags &amp; t); fp = len(flags - t); fn = len(t - flags)
+p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+f1 = 2*p*r/(p+r) if p+r else 0
+print(f"caught {tp}/{len(t)}  precision {p:.2f}  recall {r:.2f}  F1 {f1:.2f}")</div>
+
+    <div class="callout tip">
+      <strong>Give the forest context features, not just the raw value</strong>
+      A bare value column turns Isolation Forest back into a global threshold - it will catch the spike and drop but miss the contextual dip. Adding lags and rolling stats lets a random split separate "high for its recent neighbourhood," which is what a contextual anomaly is. Feature engineering is where most of the win lives.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Sweep contamination, then rank by score <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Contamination is the whole ballgame. Sweep a few values and watch precision and recall trade off, then drop the flag entirely and just rank the most anomalous days by their raw score - the honest, threshold-free view.</p>
+
+    <div class="steps">
+      <div class="step"><p>Fit the forest at several contamination values and score each.</p></div>
+      <div class="step"><p>Watch precision fall as contamination rises (more flags, more false alarms) and recall climb.</p></div>
+      <div class="step"><p>Rank days by <code>score_samples</code> to surface the most anomalous - no threshold needed.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - the contamination sweep + ranking</span>import numpy as np, pandas as pd
+from sklearn.ensemble import IsolationForest
+
+def score(flags, truth):
+    f, t = set(flags), set(truth)
+    tp = len(f &amp; t); fp = len(f - t); fn = len(t - f)
+    p = tp/(tp+fp) if tp+fp else 0
+    r = tp/(tp+fn) if tp+fn else 0
+    return p, r, (2*p*r/(p+r) if p+r else 0)
+
+# sweep the assumed anomaly rate - it sets the threshold, nothing else
+for c in [0.03, 0.05, 0.07, 0.12, 0.20]:
+    iso = IsolationForest(n_estimators=200, contamination=c, random_state=0).fit(X)
+    fl  = np.where(iso.predict(X) == -1)[0]
+    p, r, f1 = score(fl, truth)
+    print(f"contamination {c:.2f}  flagged {len(fl):2d}  P {p:.2f}  R {r:.2f}  F1 {f1:.2f}")
+
+# threshold-free: rank the most anomalous days by raw score (lower = worse)
+iso = IsolationForest(n_estimators=200, contamination="auto", random_state=0).fit(X)
+ranked = pd.Series(iso.score_samples(X), index=s.index).sort_values()
+print("\nmost anomalous days:")
+print(ranked.head(6))</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Ranking beats flagging when you own the response.</strong> A fraud analyst does not need a binary flag - they need a queue sorted worst-first, and they work down it until their time runs out. Handing the raw score to a human sidesteps the contamination guess entirely, and it is why most mature detection systems surface a ranked list, not a red/green light. Reserve hard flags for fully automated actions where a person cannot be in the loop.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Fit Isolation Forest on your own feature matrix and compare its F1 to the z-score baseline from b1. Does it earn its complexity?</li>
+      <li>Drop the lag and rolling features and refit on the raw value alone. Watch it lose the contextual anomaly, and explain why.</li>
+      <li>Sweep contamination from 0.02 to 0.25 and plot precision vs recall. Mark the value that matches your real cost of a miss vs a false alarm.</li>
+      <li>Rank the days by <code>score_samples</code> and check whether the top of the list matches the true anomalies - the threshold-free view.</li>
+      <li>Optional: read Liu, Ting &amp; Zhou (2008), "Isolation Forest" - the path-length derivation is short and elegant.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Liu, Ting &amp; Zhou (2008), "Isolation Forest," IEEE ICDM 2008</span><span class="note">Parts 1-2 · isolation by random splits, path length as anomaly score</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn "Novelty and Outlier Detection" user guide - <code>IsolationForest</code></span><span class="note">Demos 1-2 · fit, <code>score_samples</code>, and the <code>contamination</code> parameter</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What does Isolation Forest use as its anomaly signal?</p>
+      <button class="qopt" type="button">A · The distance to the nearest neighbours</button>
+      <button class="qopt" type="button">B · The average number of random splits needed to isolate a point - short path means anomalous</button>
+      <button class="qopt" type="button">C · The reconstruction error of an autoencoder</button>
+      <p class="qwhy">Anomalies are few and different, so random splits cut them off in few steps. The average path length across the forest is the score: short = anomalous.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What does the <code>contamination</code> parameter actually control?</p>
+      <button class="qopt" type="button">A · The number of trees in the forest</button>
+      <button class="qopt" type="button">B · The depth each tree can grow to</button>
+      <button class="qopt" type="button">C · The threshold - the fraction of points that get flagged as anomalies</button>
+      <p class="qwhy">Contamination is your assumed anomaly rate. It just sets where the score is cut into flag/no-flag. Too high floods false alarms; too low misses real anomalies.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why give Isolation Forest lag and rolling features instead of the raw value alone?</p>
+      <button class="qopt" type="button">A · So a split can separate "high for its recent context," which is what catches the contextual anomaly</button>
+      <button class="qopt" type="button">B · Because the forest cannot accept a single column</button>
+      <button class="qopt" type="button">C · To make the model train faster</button>
+      <p class="qwhy">On the raw value alone, the forest is just a global threshold and misses the contextual dip. Context features let a random split isolate points that are odd for their moment.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Core idea</b><span>anomalies are few and different, so random splits isolate them in fewer steps.</span></div>
+      <div class="cheat-item"><b>Path length</b><span>the number of cuts to isolate a point. Short path = anomalous.</span></div>
+      <div class="cheat-item"><b>Ensemble</b><span>average path length over many random trees; one tree is luck, the forest is stable.</span></div>
+      <div class="cheat-item"><b>Fast &amp; scalable</b><span>no distance metric, near-linear time, handles large and high-dimensional data.</span></div>
+      <div class="cheat-item"><b>score_samples</b><span>continuous anomaly score, lower = more anomalous. Rank days with it.</span></div>
+      <div class="cheat-item"><b>contamination</b><span>your assumed anomaly rate - it just sets the flag threshold, so tune it honestly.</span></div>
+      <div class="cheat-item"><b>Feature it well</b><span>value + lags + rolling stats, or it collapses to a global threshold.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b6 - one-class &amp; covariance: learning the shape of normal only.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 5 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b4-distance-density.html">← Prev: Distance &amp; density</a> &nbsp;·&nbsp; <a href="b6-oneclass-covariance.html">Next: One-class &amp; covariance →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

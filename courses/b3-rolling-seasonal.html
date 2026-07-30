@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 3 · Rolling &amp; seasonal detectors - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+<style>
+  /* ---- live anomaly detector (anomaly-live.js) ---- */
+  .al-shell { border: 1px solid #E5E7EB; border-radius: 16px; padding: 20px; background: #FFFFFF; box-shadow: 0 10px 30px rgba(31,41,55,.07); }
+  .al-top { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 16px; }
+  .al-ctrl { display: flex; flex-direction: column; gap: 8px; }
+  .al-clabel { font: 700 12px Inter, sans-serif; color: #6B7280; text-transform: uppercase; letter-spacing: .04em; }
+  .al-methods, .al-sens { display: flex; flex-wrap: wrap; gap: 8px; }
+  .al-btn { font: 600 13px Inter, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid #D1D5DB; background: #F9FAFB; color: #1F2937; cursor: pointer; transition: all .15s; }
+  .al-btn:hover { border-color: #DC2626; }
+  .al-btn.al-on { background: #DC2626; color: #FFFFFF; border-color: #DC2626; }
+  .al-chart { width: 100%; overflow-x: auto; }
+  .al-chart svg { width: 100%; height: auto; display: block; }
+  .al-legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 10px 0 4px; font: 500 12.5px Inter, sans-serif; color: #6B7280; }
+  .al-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .al-sw { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .al-sw.al-normal { background: #9CA3AF; width: 10px; height: 10px; }
+  .al-sw.al-flag { background: #DC2626; }
+  .al-sw.al-true { background: #FFFFFF; border: 2px solid #111827; }
+  .al-meters { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; align-items: stretch; }
+  .al-meter { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 96px; }
+  .al-mlabel { font: 600 11.5px Inter, sans-serif; color: #6B7280; text-transform: uppercase; letter-spacing: .03em; }
+  .al-mval { font: 800 24px Inter, sans-serif; color: #1F2937; }
+  .al-mval.al-good { color: #16A34A; }
+  .al-mval.al-bad { color: #DC2626; }
+  .al-note { flex: 1; min-width: 240px; justify-content: center; font: 500 13.5px Inter, sans-serif; color: #374151; line-height: 1.6; }
+  .al-note b { color: #7F1D1D; }
+  .al-h { color: #6B7280; }
+  .al-rail { margin-top: 14px; font: 400 12.5px Inter, sans-serif; color: #6B7280; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 3 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 3 of 10</div>
+    <h1>Rolling &amp; seasonal detectors: <span class="accent">flagging in context</span></h1>
+    <p class="sub">Global thresholds are blind to time. A weekend low is normal; the same value on a Tuesday is an alarm. This session builds detectors that judge each point against its local and seasonal context - rolling mean and standard deviation, EWMA, and the STL-residual detector - on the Lumen series, and hands you a live detector where you switch method and sensitivity and watch precision and recall move.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · statsmodels</span>
+      <span class="chip time">45 minutes</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Rolling, EWMA, seasonal</span>
+      <span class="a3" style="flex:5">18-42 · Build-along + the live detector</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>From global to contextual</h2>
+    </div>
+    <p class="lede">In b2 you built the statistical detectors - z-score, IQR, and robust MAD - and felt their limit: they judge every point against the whole dataset, so they miss anything that is only odd for its moment. Tonight you fix that. Rolling and seasonal detectors compare each point to what was normal <em>right there</em> - its recent neighbours, or its weekday - and that is what finally catches the contextual anomaly. At the end you drive a live detector that scores five methods in front of you.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      Rolling-window and EWMA detectors and an STL-residual detector built on Lumen, an intuition for why removing the seasonal context is the whole game, and a live in-browser detector that shows precision and recall trading off as you change method and sensitivity.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ROLLING ============ -->
+  <section class="section" id="rolling">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · local context</span>
+      <h2>Judge each point against its neighbours <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">A rolling detector keeps a moving window of recent days and asks: is today far from the local mean, in units of the local standard deviation? Because the window travels with the series, it adapts to a drifting trend that would fool a global threshold. EWMA does the same with an exponentially-weighted memory instead of a hard window.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A rolling window travels along the series computing a local mean and band; a point outside the local band is flagged">
+        <style>
+          .b3rT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b3rX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b3rN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b3rT" x="24" y="26">A local band travels with the series</text>
+        <!-- local band -->
+        <path d="M60,150 Q220,120 400,120 T760,110 L760,168 Q400,178 220,178 T60,196 Z" fill="#FEE2E2" stroke="none"/>
+        <!-- series -->
+        <polyline points="60,172 120,158 180,150 240,150 300,146 360,150 420,142 480,150 540,140 600,146 660,138 720,144 760,140"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <!-- window box -->
+        <rect x="180" y="96" width="150" height="120" rx="8" fill="none" stroke="#1F2937" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <text class="b3rX" x="196" y="90">rolling window</text>
+        <!-- flagged point outside band -->
+        <circle cx="600" cy="86" r="6" fill="#DC2626"/>
+        <line x1="600" y1="146" x2="600" y2="92" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="b3rT" x="560" y="76">flagged</text>
+        <rect x="24" y="232" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b3rN" x="46" y="244">The band adapts to the trend - but if seasonality lives inside the window, weekend dips still trip it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a rolling local band flags points that leave it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Rolling and EWMA, and where they still fail<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Rolling z-score</strong> - local mean and std over a trailing window; flags points beyond k local sigmas. Adapts to trend and slow drift.</li>
+          <li><strong>EWMA</strong> - an exponentially-weighted moving average; recent points count more, no hard window edge. Smooth and responsive.</li>
+          <li><strong>The catch</strong> - if the window spans the weekly cycle, the seasonal swing inflates the local std and the weekend dips look like anomalies. Rolling fixes trend, not seasonality. That is what the seasonal detector is for.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Rolling detectors are the backbone of ops monitoring.</strong> Most metric-alerting systems are, under the hood, a rolling mean and a band. They are cheap, streaming-friendly, and explainable - which is why they are everywhere. Their weakness is exactly the seasonal one you are about to fix.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: SEASONAL RESIDUAL ============ -->
+  <section class="section" id="seasonal">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · seasonal context</span>
+      <h2>Subtract the pattern, then flag the remainder <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">The strongest simple detector on seasonal data does one clever thing: it removes the expected weekly pattern first. Decompose the series into trend, season, and residual (STL), and run your detector on the <em>residual</em> alone. Now a weekday-at-weekend-level jumps out, because against its own weekday it is far from normal.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The observed series minus its seasonal pattern leaves a flat residual, where the contextual anomaly finally stands out">
+        <style>
+          .b3sT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .b3sI { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b3sX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b3sN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <rect x="24" y="44" width="200" height="70" rx="10" fill="#4B5563"/>
+        <text class="b3sT" x="44" y="72">Observed</text>
+        <text class="b3sX" x="44" y="94" style="fill:#E5E7EB">trend + season + noise</text>
+        <text class="b3sX" x="44" y="108" style="fill:#E5E7EB">(anomaly hidden)</text>
+        <text class="b3sI" x="238" y="84">-</text>
+        <rect x="260" y="44" width="200" height="70" rx="10" fill="#D97706"/>
+        <text class="b3sT" x="280" y="72">Weekly season</text>
+        <text class="b3sX" x="280" y="94" style="fill:#FEF3C7">the expected pattern</text>
+        <text class="b3sX" x="280" y="108" style="fill:#FEF3C7">for each weekday</text>
+        <text class="b3sI" x="474" y="84">=</text>
+        <rect x="496" y="44" width="360" height="70" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b3sI" x="516" y="72">Residual</text>
+        <text class="b3sX" x="516" y="94">flat and centered - now the contextual</text>
+        <text class="b3sX" x="516" y="108">anomaly is the point that sticks out</text>
+        <!-- little residual line with a spike -->
+        <line x1="516" y1="150" x2="836" y2="150" stroke="#D1D5DB" stroke-width="1"/>
+        <polyline points="516,150 552,146 588,152 624,148 660,151 696,147 732,150" fill="none" stroke="#4B5563" stroke-width="1.5"/>
+        <circle cx="660" cy="190" r="5" fill="#DC2626"/>
+        <line x1="660" y1="151" x2="660" y2="185" stroke="#DC2626" stroke-width="1.4" stroke-dasharray="3 3"/>
+        <text class="b3sX" x="676" y="192">contextual anomaly</text>
+        <rect x="24" y="220" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b3sN" x="46" y="232">Deseasonalize first, and a global threshold on the residual becomes a contextual detector.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - observed minus season leaves a residual you can threshold</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Build the rolling and STL-residual detectors<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Both are a few lines on the Lumen series from b1:</p>
+        <div class="prompt-box good"><span class="label">★ Run it now (Python) - rolling + STL-residual</span>import numpy as np, pandas as pd
+from statsmodels.tsa.seasonal import STL
+
+# 1) rolling z-score (local context, window = 10)
+mu = s.rolling(10, min_periods=4).mean()
+sd = s.rolling(10, min_periods=4).std()
+roll_z = (s - mu) / sd
+roll_flags = set(np.where(np.abs(roll_z) &gt; 2.5)[0])
+
+# 2) STL-residual detector (seasonal context)
+res = STL(s, period=7, robust=True).fit().resid
+med = res.median(); mad = (res - med).abs().median() or 1
+mz = 0.6745 * (res - med) / mad                    # robust z on the residual
+stl_flags = set(np.where(np.abs(mz) &gt; 3)[0])
+
+for name, f in [("rolling", roll_flags), ("STL-residual", stl_flags)]:
+    tp = len(f &amp; set(truth)); fp = len(f - set(truth)); fn = len(set(truth) - f)
+    p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+    print(f"{name:13s} P {p:.2f}  R {r:.2f}  (caught {tp}/{len(truth)})")</div>
+        <p>The STL-residual detector is the one that finally catches the contextual anomaly - because on its own weekday, it is far from normal.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO: LIVE DETECTOR ============ -->
+  <section class="section" id="demo-live">
+    <div class="section-kicker">
+      <span class="klabel">Demo · drive it yourself</span>
+      <h2>The live detector <span class="tag demo">★ real math in your browser</span></h2>
+    </div>
+    <p class="lede">This is a genuine detector, not a mock-up. It runs z-score, IQR, robust MAD, rolling-window, and seasonal-residual detectors on a synthetic Lumen series with four injected anomalies, flags points in red, rings the true anomalies, and scores precision, recall, and F1 live. Switch the method and the sensitivity, and watch the trade-off. Note which anomalies each method can and cannot see - the global ones catch the obvious spikes and miss the contextual dip; the seasonal-residual detector catches them all.</p>
+
+    <div id="anomaly-live"></div>
+
+    <div class="callout tip">
+      <strong>Sensitivity is a business decision</strong>
+      Turn the sensitivity up and recall rises but false alarms flood in; turn it down and precision rises but you miss real events. There is no free lunch - where you set it depends on the cost of a missed anomaly versus the cost of a false alarm. That is a conversation with the business, not just a hyperparameter.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Compare all five on Lumen <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Score every detector so far side by side and see the seasonal one win.</p>
+
+    <div class="steps">
+      <div class="step"><p>Run the z-score, IQR, MAD, rolling, and STL-residual detectors on the same Lumen series.</p></div>
+      <div class="step"><p>Score precision, recall, and F1 for each against the labels.</p></div>
+      <div class="step"><p>Confirm the seasonal-residual detector has the best F1, and identify which anomaly each simpler method misses.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - the scoreboard</span>import numpy as np, pandas as pd
+
+def score(flags):
+    f = set(flags); t = set(truth)
+    tp = len(f &amp; t); fp = len(f - t); fn = len(t - f)
+    p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+    return p, r, (2*p*r/(p+r) if p+r else 0)
+
+zf   = np.where(np.abs((s-s.mean())/s.std()) &gt; 3)[0]
+res  = __import__("statsmodels.tsa.seasonal", fromlist=["STL"]).STL(s, period=7, robust=True).fit().resid
+med  = res.median(); mad = (res-med).abs().median() or 1
+sf   = np.where(np.abs(0.6745*(res-med)/mad) &gt; 3)[0]
+for name, fl in [("z-score", zf), ("STL-residual", sf)]:
+    print(f"{name:13s}  P {score(fl)[0]:.2f}  R {score(fl)[1]:.2f}  F1 {score(fl)[2]:.2f}")
+# STL-residual beats the global z-score - it sees the contextual anomaly</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Deseasonalizing is the highest-leverage move in time-series detection.</strong> Before reaching for isolation forests or autoencoders, remove the known pattern - weekday, holiday, campaign - and detect on what is left. Half of "our model is too noisy" turns out to be a seasonal pattern nobody subtracted.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Build the rolling z-score and EWMA detectors on your own series and see how they track a drifting trend.</li>
+      <li>Decompose with STL and run a robust threshold on the residual. Does it catch a contextual anomaly the global methods miss?</li>
+      <li>Sweep the sensitivity and plot precision vs recall - find the point that matches your cost of a miss vs a false alarm.</li>
+      <li>On the live detector, find a method + sensitivity that reaches F1 = 100%, and one that floods with false alarms.</li>
+      <li>Optional: read the STL decomposition section of FPP3 to see how the seasonal component is estimated.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">STL decomposition (Cleveland et al.) via statsmodels; robust residual thresholding</span><span class="note">Parts 1-2 · rolling, EWMA, and seasonal-residual detection</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Chandola, Banerjee &amp; Kumar (2009) - contextual anomalies</span><span class="note">Part 2 · why context must be removed before thresholding</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What does a rolling-window detector fix that a global z-score does not?</p>
+      <button class="qopt" type="button">A · Seasonality</button>
+      <button class="qopt" type="button">B · Trend and slow drift - it compares each point to its local neighbours</button>
+      <button class="qopt" type="button">C · Nothing, it is identical</button>
+      <p class="qwhy">The window travels with the series, so it adapts to a drifting trend. It does NOT fix seasonality - a weekly swing inside the window still trips it.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why does the STL-residual detector catch the contextual anomaly?</p>
+      <button class="qopt" type="button">A · It uses a larger threshold</button>
+      <button class="qopt" type="button">B · It has access to the labels</button>
+      <button class="qopt" type="button">C · It removes the expected weekly pattern first, so a weekday-at-weekend-level is far from normal on its own residual</button>
+      <p class="qwhy">Subtracting the seasonal component leaves a flat residual. Against its own weekday, the contextual point now stands out - which it never did globally.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Turning sensitivity up does what?</p>
+      <button class="qopt" type="button">A · Raises recall but lowers precision - more real catches, more false alarms</button>
+      <button class="qopt" type="button">B · Raises both precision and recall for free</button>
+      <button class="qopt" type="button">C · Has no effect on the results</button>
+      <p class="qwhy">Sensitivity is a precision/recall trade-off. More sensitive = catch more real anomalies but flag more false ones. Where you set it is a business decision.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Rolling z-score</b><span>local mean + std over a trailing window. Adapts to trend and drift.</span></div>
+      <div class="cheat-item"><b>EWMA</b><span>exponentially-weighted memory; recent points count more, no hard window edge.</span></div>
+      <div class="cheat-item"><b>Rolling's limit</b><span>seasonality inside the window inflates the local std - weekend dips look anomalous.</span></div>
+      <div class="cheat-item"><b>STL-residual</b><span>decompose, then threshold the residual. Removes the pattern, so context anomalies show.</span></div>
+      <div class="cheat-item"><b>Deseasonalize first</b><span>the highest-leverage move: subtract the known pattern before detecting.</span></div>
+      <div class="cheat-item"><b>Robust threshold</b><span>use median + MAD on the residual, not mean + std - outliers do not inflate it.</span></div>
+      <div class="cheat-item"><b>Sensitivity = trade-off</b><span>up = more recall + more false alarms; down = more precision + more misses.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b4 - distance &amp; density: kNN distance and the Local Outlier Factor.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 3 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b2-statistical-detectors.html">← Prev: Statistical detectors</a> &nbsp;·&nbsp; <a href="b4-distance-density.html">Next: Distance &amp; density →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script src="../assets/anomaly-live.js?v=1"></script>
+</body>
+</html>

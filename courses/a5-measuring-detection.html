@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 5 · Measuring detection - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 5 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 5 of 6</div>
+    <h1>Measuring detection: <span class="accent">and why it is a trap for the unwary</span></h1>
+    <p class="sub">Someone shows you a detector that is "99% accurate." Walk away impressed and you have been fooled - on rare events that number rewards a detector for doing nothing. This session gives you the honest scoreboard: precision (the false-alarm question), recall (the miss question), and the trade-off dial between them. Then the failure mode that quietly kills most detection systems: alert fatigue. No math, no code - just the numbers you should ask for and the ones you should never trust.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">~20 min read</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Why the number lies</span>
+      <span class="a2" style="flex:4">3-11 · Precision, recall, F1</span>
+      <span class="a3" style="flex:4">11-18 · The trade-off dial</span>
+      <span class="a4" style="flex:2">18-20 · Alert fatigue</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The one number never to trust</h2>
+    </div>
+    <p class="lede">Every detector your org buys or builds will come with a score attached, and the person presenting it wants you to be impressed. Your job as a leader is not to read the model code - it is to ask for the <em>right</em> numbers and to smell it when the wrong ones are being waved around. This session is that filter. It is short, it has no math, and it will change what you ask in every detection review from now on. The headline: on rare events, accuracy is a liar, and the honest story is told by two numbers pulling against each other.</p>
+    <div class="legend">
+      <span class="pill solid">Live - discussed in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A gut reflex that rejects "accuracy" on rare events, a plain-language grip on precision and recall (false alarms vs misses) and the F1 that balances them, an understanding that the sensitivity threshold is a business dial you own, and the one failure mode - alert fatigue - that quietly turns a good detector into a muted one.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ACCURACY LIES ============ -->
+  <section class="section" id="baserate">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the rare-event trap</span>
+      <h2>Why accuracy lies <span class="tag concept">4 min live</span></h2>
+    </div>
+    <p class="lede">Anomalies are rare by definition - fraud, outages, and defects are usually well under 1% of all the events you see. That rarity breaks the metric everyone reaches for first. A detector that flags <strong>nothing at all</strong> is right about 99%+ of the time, because 99%+ of days really are normal. It scores beautifully on accuracy and catches zero real problems. This is the base-rate trap, and it is why "99% accurate" should make you suspicious, not comfortable.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="With anomalies under one percent, a detector that flags nothing scores 99.5 percent accuracy yet catches zero anomalies, so precision, recall and F1 are the metrics that survive">
+        <style>
+          .a5lbT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .a5lbI { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a5lbX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a5lbN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a5lbI" x="24" y="28">1000 days of traffic: 995 normal, 5 real anomalies</text>
+        <!-- the "flag nothing" detector -->
+        <rect x="24" y="44" width="520" height="44" rx="8" fill="#4B5563"/><text class="a5lbT" x="44" y="71">"Flag nothing" detector</text>
+        <rect x="556" y="44" width="120" height="44" rx="8" fill="#E5E7EB"/><text class="a5lbI" x="576" y="71">99.5%</text>
+        <text class="a5lbX" x="688" y="71">accuracy - and useless</text>
+        <text class="a5lbN" x="24" y="118">It caught 0 of 5 anomalies. Accuracy paid it to ignore the whole problem.</text>
+        <!-- the honest metrics -->
+        <rect x="24" y="140" width="270" height="70" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a5lbI" x="44" y="168">Precision</text>
+        <text class="a5lbX" x="44" y="188">of the days you flagged,</text>
+        <text class="a5lbX" x="44" y="204">how many were real?</text>
+        <rect x="310" y="140" width="270" height="70" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a5lbI" x="330" y="168">Recall</text>
+        <text class="a5lbX" x="330" y="188">of the real anomalies,</text>
+        <text class="a5lbX" x="330" y="204">how many did you catch?</text>
+        <rect x="596" y="140" width="260" height="70" rx="10" fill="#1F2937"/>
+        <text class="a5lbT" x="616" y="168">F1</text>
+        <text class="a5lbX" x="616" y="188" style="fill:#FEE2E2">the balance of the two -</text>
+        <text class="a5lbX" x="616" y="204" style="fill:#FEE2E2">the number to ask for</text>
+        <rect x="24" y="228" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a5lbN" x="46" y="240">On rare events, precision and recall are the scoreboard. Accuracy is not invited.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the base-rate trap, and the metrics that survive it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The question to ask in the room<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When a team presents a detector, the sentence "it is 95% accurate" tells you almost nothing on a rare-event problem. Two questions cut through it:</p>
+        <ul>
+          <li><strong>"Of everything it flagged, how much was really a problem?"</strong> - that is precision, the false-alarm question.</li>
+          <li><strong>"Of the real problems that happened, how many did it catch?"</strong> - that is recall, the miss question.</li>
+        </ul>
+        <p>If they cannot answer both, they do not yet know whether the detector works. Accuracy alone can hide a detector that flags nothing, or one that flags everything.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Fraud, outages, and disease screening all live here.</strong> A rare-disease test that always says "healthy" is over 99% accurate and lethal. A fraud model that says "no fraud" on every transaction is 99.9% accurate and bankrupts you. The rarer the thing you are hunting, the more accuracy flatters a detector for looking the other way.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE HONEST METRICS ============ -->
+  <section class="section" id="metrics">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the honest scoreboard</span>
+      <h2>Precision, recall, and their balance <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Two numbers replace the lying one, and they answer the two things you actually care about. <strong>Precision</strong> is about false alarms: of everything the detector flagged, what share was truly anomalous. <strong>Recall</strong> is about misses: of everything that was truly anomalous, what share the detector caught. <strong>F1</strong> is a single number that balances the two, so a detector cannot win by acing one and failing the other.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Precision - the false-alarm rate<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Precision answers: <em>when this thing cries wolf, how often is there actually a wolf?</em> Low precision means most alerts are noise - the team opens ten tickets and nine are nothing. That is expensive in attention, and, as we will see, it is how a detector gets muted.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>A payments team lives on precision.</strong> Every false fraud flag freezes a real customer's card and generates an angry call. If only one flag in five is real fraud, the cost of the four false alarms - support time, churned customers - can dwarf the fraud they caught. Precision is the number their leadership watches.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Recall - the miss rate<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Recall answers: <em>of the real problems that happened, how many did we catch?</em> Low recall means anomalies slip through silently. You do not get a ticket, you get a post-mortem. Recall is what you care about most when a miss is catastrophic.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>An outage-detection team lives on recall.</strong> A missed outage is a customer-facing incident and a headline. They will happily tolerate more false alarms to make sure a real outage is never missed - so they tune for high recall, and accept the precision cost. The right balance depends entirely on which mistake hurts more.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why F1, and why not accuracy<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Precision and recall can be gamed one at a time. Flag everything and recall hits 100% while precision collapses. Flag almost nothing and precision looks high while recall collapses. <strong>F1</strong> combines them into one score that only rises when <em>both</em> are healthy, so it is the honest single number to compare two detectors.</p>
+        <p>You may also hear <strong>PR-AUC</strong> (the area under the precision-recall curve) - a summary of how the detector performs across every possible sensitivity setting, not just one. For a leader, the takeaway is simpler: ask for precision, recall, and F1 together. If someone offers you accuracy on a rare-event problem, that is the tell.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE TRADE-OFF DIAL ============ -->
+  <section class="section" id="dial">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the dial you own</span>
+      <h2>The precision/recall trade-off <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Here is the part most people miss: precision and recall are not fixed properties of a detector. They sit on a dial - the sensitivity threshold. Crank the detector to fire more easily and you catch more real anomalies (recall up) but drown in false alarms (precision down). Turn it down and the alerts get cleaner (precision up) but real anomalies slip through (recall down). Where you set that dial is a business decision, not a model detail - and it is yours.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single sensitivity dial: cranked to high sensitivity gives more recall but less precision and alert fatigue, turned to low sensitivity gives more precision but more missed anomalies">
+        <style>
+          .a5dT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a5dL { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a5dX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a5dW { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+          .a5dN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a5dT" x="24" y="28">One dial sets both numbers: the sensitivity threshold</text>
+        <!-- the track -->
+        <rect x="120" y="70" width="640" height="14" rx="7" fill="#E5E7EB"/>
+        <!-- gradient hint via two halves -->
+        <rect x="120" y="70" width="320" height="14" rx="7" fill="#FCA5A5"/>
+        <circle cx="440" cy="77" r="16" fill="#4B5563"/>
+        <text class="a5dW" x="440" y="81" text-anchor="middle">◆</text>
+        <!-- end labels -->
+        <text class="a5dL" x="120" y="108">◄ High sensitivity - flag more easily</text>
+        <text class="a5dL" x="760" y="108" text-anchor="end">Low sensitivity - flag rarely ►</text>
+        <!-- left cluster: high sensitivity -->
+        <rect x="24" y="128" width="392" height="120" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a5dL" x="44" y="156">Crank it up</text>
+        <text class="a5dX" x="44" y="180">Recall ↑  you catch more real anomalies</text>
+        <text class="a5dX" x="44" y="200">Precision ↓  more of the alerts are noise</text>
+        <rect x="44" y="212" width="352" height="26" rx="6" fill="#DC2626"/>
+        <text class="a5dW" x="56" y="230">⚠ Alert fatigue lives at this end</text>
+        <!-- right cluster: low sensitivity -->
+        <rect x="464" y="128" width="392" height="120" rx="12" fill="#F9FAFB" stroke="#4B5563"/>
+        <text class="a5dL" x="484" y="156">Turn it down</text>
+        <text class="a5dX" x="484" y="180">Precision ↑  alerts get cleaner, less noise</text>
+        <text class="a5dX" x="484" y="200">Recall ↓  real anomalies slip through</text>
+        <rect x="484" y="212" width="352" height="26" rx="6" fill="#4B5563"/>
+        <text class="a5dW" x="496" y="230">Silent misses live at this end</text>
+        <!-- bottom note -->
+        <rect x="24" y="286" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a5dN" x="46" y="298">Where you set the dial is a cost decision: cost of a miss vs cost of a false alarm. That is a leader's call.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the sensitivity dial, and what moves when you turn it</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Setting the dial is your decision, not the model's<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The model produces a score for how odd each event is. Turning that score into a yes/no alert needs a threshold - and that threshold trades precision against recall. There is no "correct" setting a model can find for you, because the right setting depends on which mistake costs your business more:</p>
+        <ul>
+          <li><strong>When a miss is catastrophic</strong> (an outage, a safety defect), set the dial sensitive - accept more false alarms to protect recall.</li>
+          <li><strong>When false alarms are expensive</strong> (freezing real customers, waking an on-call engineer), set it conservative - protect precision, accept some misses.</li>
+        </ul>
+        <p>Ask your team to show you precision and recall at a few different threshold settings, then <em>you</em> pick the operating point. That is the leader's lever, and it is the subject of the next session.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 4: ALERT FATIGUE ============ -->
+  <section class="section" id="fatigue">
+    <div class="section-kicker">
+      <span class="klabel">Part 4 · the real failure mode</span>
+      <h2>Alert fatigue kills detectors <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Here is the failure mode that no model metric shows you. A detector with low precision cries wolf constantly. The humans on the other end learn that most alerts are nothing, so they start ignoring them - muting the channel, auto-closing the tickets, skimming past the red. And then the one real anomaly arrives, fires exactly like all the false ones, and gets ignored with the rest. Low precision does not just waste time. It destroys trust in the whole system, and a muted detector catches nothing.</p>
+
+    <div class="callout tip">
+      <strong>Low precision kills detection systems, not low recall</strong>
+      In practice the thing that ends a detection program is rarely a missed anomaly on paper - it is a team that stopped trusting the alerts. If your people are muting, filtering, or eye-rolling at the detector, its real-world recall has already collapsed to near zero, no matter what the offline score says. Precision is a trust budget, and once it is spent the detector is dead.
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Symptoms of a detector nobody trusts anymore<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Alert fatigue rarely announces itself. It shows up as small, rational human behaviours:</p>
+        <ul>
+          <li>A Slack channel or inbox rule that quietly filters the detector's alerts out of sight.</li>
+          <li>Tickets auto-closed or bulk-dismissed without investigation.</li>
+          <li>"Oh, that one always fires, ignore it" said out loud in a standup.</li>
+          <li>Nobody can remember the last time an alert led to a real fix.</li>
+        </ul>
+        <p>Any of these means the detector's effective recall is already near zero, whatever the dashboard claims. The fix is not a better model - it is raising precision (turn the dial down) until each alert is worth a human's attention again.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Pick one detector or alerting system your org actually relies on (fraud, outage, quality, security, or a business KPI alert).</li>
+      <li>Ask for its <strong>precision</strong>: of everything it flagged last month, what share was truly a problem? If nobody knows, that is your finding.</li>
+      <li>Ask for its <strong>recall</strong>: of the real problems that happened last month, how many did it actually catch? Again, "we don't measure that" is a finding.</li>
+      <li>Now the human question: <strong>is anyone muting it?</strong> Look for filtered channels, auto-closed tickets, or "that one always fires." If people are ignoring it, its true recall is near zero.</li>
+      <li>Write one sentence: is this detector's problem too many false alarms (precision), too many misses (recall), or lost trust (fatigue) - and which way should the dial move?</li>
+      <li>Optional: skim the framing in the Numenta Anomaly Benchmark on why streaming detectors must be judged by more than accuracy.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon, framed for decision-makers. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Evaluation · why accuracy fails on rare events, precision/recall framing</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB), Lavin &amp; Ahmad (2015)</span><span class="note">Streaming detection · evaluation beyond accuracy, false-alarm cost</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · A vendor says their detector is "99% accurate" on a problem where anomalies are 1% of events. Why is that unimpressive?</p>
+      <button class="qopt" type="button">A · 99% is actually a low score for detection</button>
+      <button class="qopt" type="button">B · Accuracy is too slow to compute at scale</button>
+      <button class="qopt" type="button">C · A detector that flags nothing is already ~99% accurate and catches zero anomalies - accuracy rewards ignoring the problem</button>
+      <p class="qwhy">The base-rate trap. When anomalies are rare, doing nothing scores near-perfect accuracy. Ask for precision and recall instead.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · Your team cranks the detector's sensitivity up to catch more real anomalies. What predictably happens?</p>
+      <button class="qopt" type="button">A · Both precision and recall improve at once</button>
+      <button class="qopt" type="button">B · Recall rises, but precision falls - more false alarms come with the extra catches</button>
+      <button class="qopt" type="button">C · Nothing changes; the model is fixed</button>
+      <p class="qwhy">Sensitivity is a dial. More recall costs precision. Where you set it is a business decision about which mistake hurts more.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · In practice, what most often kills a detection system that looks fine on paper?</p>
+      <button class="qopt" type="button">A · Alert fatigue - low precision floods people with false alarms until they mute it, so it misses the real one</button>
+      <button class="qopt" type="button">B · The model runs too fast</button>
+      <button class="qopt" type="button">C · Too few false alarms</button>
+      <p class="qwhy">Low precision spends the team's trust. Once alerts are muted, the detector's real recall collapses no matter what the offline score says.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Accuracy lies</b><span>on rare events, "flag nothing" scores 99%+ and catches zero. Never judge a detector by accuracy alone.</span></div>
+      <div class="cheat-item"><b>Precision</b><span>of what it flagged, how much was real. The false-alarm question.</span></div>
+      <div class="cheat-item"><b>Recall</b><span>of the real anomalies, how many it caught. The miss question.</span></div>
+      <div class="cheat-item"><b>F1</b><span>the single number that balances precision and recall. Ask for it, not accuracy.</span></div>
+      <div class="cheat-item"><b>The dial</b><span>sensitivity trades recall for precision. More catches = more false alarms.</span></div>
+      <div class="cheat-item"><b>Your call</b><span>where the dial sits is a cost decision: cost of a miss vs cost of a false alarm.</span></div>
+      <div class="cheat-item"><b>Alert fatigue</b><span>low precision floods people, they mute it, and it misses the real one. The true killer.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>a6 - strategy &amp; pitfalls: thresholds, drift, human-in-the-loop, and when NOT to auto-flag.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 5 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="a6-strategy-pitfalls.html">Next: Strategy &amp; pitfalls →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

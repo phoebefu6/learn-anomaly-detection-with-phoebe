@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 4 · The team + the pipeline - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 4 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 4 of 6</div>
+    <h1>The team and the pipeline: <span class="accent">who does what (R&amp;R)</span></h1>
+    <p class="sub">A detector is not a model - it is a relay of people. This session maps the five roles that make anomaly detection work and the artifact each one hands to the next: the analyst labels and baselines, the data scientist builds and tunes, engineering streams it, on-call responds, and everyone monitors. The twist that makes detection special is the loop at the end - what on-call decides about each alert flows back and retrains the detector.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">~45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-22 · The relay + its hand-offs</span>
+      <span class="a3" style="flex:4">22-40 · RACI + the feedback loop</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The one idea for today</h2>
+    </div>
+    <p class="lede">The most common way an anomaly-detection project fails is not a bad model - it is a broken relay. The data scientist ships a detector that never gets served; the alerts fire into a channel no one owns; on-call mutes them and no one hears; the confirmations of "real" or "false" evaporate instead of improving the detector. Detection is a five-role relay, and the value lives in the hand-offs between roles. This session names the roles, the artifact each passes on, and the one loop - unique to detection - that turns responses back into a better detector.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The five roles of a detection pipeline (analyst → data scientist → ML engineer/DevOps → on-call/ops → monitoring), the concrete artifact each hands to the next, a RACI grid you can drop onto your own org, and a clear grip on the feedback loop that most teams forget to build - the one that turns every alert disposition into training signal.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE RELAY ============ -->
+  <section class="section" id="relay">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · the pipeline as a relay</span>
+      <h2>Five roles, five hand-offs <span class="tag concept">12 min live</span></h2>
+    </div>
+    <p class="lede">Follow the baton. Each role does its part and hands a specific artifact to the next - labels and a baseline, then a tuned detector, then live alerts, then triaged incidents, then a health view. Miss any hand-off and the relay stalls. The numbers in brackets map each role to the builder-track sessions where it lives.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A relay of five roles - analyst, data scientist, ML engineer, on-call, monitoring - each handing an artifact to the next, with a feedback loop from on-call back to the data scientist">
+        <defs>
+          <marker id="a4rarr" markerWidth="9" markerHeight="9" refX="5" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="#9CA3AF"/></marker>
+          <marker id="a4farr" markerWidth="9" markerHeight="9" refX="5" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="#DC2626"/></marker>
+        </defs>
+        <style>
+          .a4rT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a4rN { font: 700 12.5px Inter, sans-serif; fill: #FFFFFF; }
+          .a4rD { font: 400 10.5px Inter, sans-serif; fill: #E5E7EB; }
+          .a4rA { font: 600 10.5px Inter, sans-serif; fill: #7F1D1D; }
+          .a4rF { font: 600 11px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a4rT" x="24" y="26">The baton passes an artifact at every hand-off</text>
+
+        <!-- stage 1 -->
+        <rect x="20" y="50" width="150" height="66" rx="9" fill="#374151"/>
+        <text class="a4rN" x="32" y="72">Data Analyst</text>
+        <text class="a4rD" x="32" y="90">profiles history,</text>
+        <text class="a4rD" x="32" y="105">labels incidents [b1,b2]</text>
+        <rect x="20" y="128" width="150" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a4rA" x="32" y="146">labels +</text>
+        <text class="a4rA" x="32" y="161">baseline detector</text>
+
+        <!-- stage 2 -->
+        <rect x="190" y="50" width="150" height="66" rx="9" fill="#374151"/>
+        <text class="a4rN" x="202" y="72">Data Scientist</text>
+        <text class="a4rD" x="202" y="90">builds &amp; tunes,</text>
+        <text class="a4rD" x="202" y="105">sets threshold [b3-b9]</text>
+        <rect x="190" y="128" width="150" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a4rA" x="202" y="146">tuned detector</text>
+        <text class="a4rA" x="202" y="161">+ threshold</text>
+
+        <!-- stage 3 -->
+        <rect x="360" y="50" width="150" height="66" rx="9" fill="#374151"/>
+        <text class="a4rN" x="372" y="72">ML Eng / DevOps</text>
+        <text class="a4rD" x="372" y="90">streams on live data,</text>
+        <text class="a4rD" x="372" y="105">routes alerts [b10]</text>
+        <rect x="360" y="128" width="150" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a4rA" x="372" y="151">streaming alerts</text>
+
+        <!-- stage 4 -->
+        <rect x="530" y="50" width="150" height="66" rx="9" fill="#374151"/>
+        <text class="a4rN" x="542" y="72">On-call / Ops</text>
+        <text class="a4rD" x="542" y="90">responds; marks</text>
+        <text class="a4rD" x="542" y="105">real or false [b10]</text>
+        <rect x="530" y="128" width="150" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a4rA" x="542" y="146">triaged incidents</text>
+        <text class="a4rA" x="542" y="161">+ feedback</text>
+
+        <!-- stage 5 -->
+        <rect x="700" y="50" width="160" height="66" rx="9" fill="#1F2937"/>
+        <text class="a4rN" x="712" y="72">Monitoring</text>
+        <text class="a4rD" x="712" y="90">led by DS: still</text>
+        <text class="a4rD" x="712" y="105">catching? crying wolf?</text>
+        <rect x="700" y="128" width="160" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a4rA" x="712" y="151">health dashboard</text>
+
+        <!-- forward arrows -->
+        <line x1="170" y1="83" x2="188" y2="83" stroke="#9CA3AF" stroke-width="1.8" marker-end="url(#a4rarr)"/>
+        <line x1="340" y1="83" x2="358" y2="83" stroke="#9CA3AF" stroke-width="1.8" marker-end="url(#a4rarr)"/>
+        <line x1="510" y1="83" x2="528" y2="83" stroke="#9CA3AF" stroke-width="1.8" marker-end="url(#a4rarr)"/>
+        <line x1="680" y1="83" x2="698" y2="83" stroke="#9CA3AF" stroke-width="1.8" marker-end="url(#a4rarr)"/>
+
+        <!-- feedback loop: on-call back to data scientist -->
+        <path d="M605,168 L605,258 L265,258 L265,170" fill="none" stroke="#DC2626" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a4farr)"/>
+        <text class="a4rF" x="300" y="252">Feedback loop: on-call dispositions flow back to retrain and retune the detector</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the five-role relay and the feedback loop</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The relay, role by role<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Data analyst</strong> - profiles the history, labels the incidents everyone remembers, and ships a plain baseline detector (a z-score or seasonal rule). Hands off: <em>labels + a baseline</em>. This is the honest bar everything later must beat. [b1, b2]</li>
+          <li><strong>Data scientist</strong> - builds and tunes the real detector - statistical, ML, or deep - and, critically, sets the <em>threshold</em> on a precision/recall trade-off. That threshold is a business decision dressed as a technical one. Hands off: <em>a tuned detector and a threshold</em>. [b3-b9]</li>
+          <li><strong>ML engineer / DevOps</strong> - takes the detector off the notebook and streams it: runs detection on live data and routes each alert to a channel someone owns. Hands off: <em>streaming alerts</em>. [b10]</li>
+          <li><strong>On-call / ops</strong> - the humans who receive the alerts, respond, and - the part teams forget - record whether each one was real or a false alarm. Hands off: <em>triaged incidents + feedback</em>. [b10]</li>
+          <li><strong>Everyone, led by the data scientist</strong> - monitors the detector itself: is it still catching real anomalies, and is it crying wolf? Hands off: <em>a health dashboard</em>. [b10]</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where relays snap<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each hand-off is a place the whole system can quietly break:</p>
+        <ul>
+          <li><strong>Analyst → DS</strong> - no labels, so no one can measure whether the detector is any good. The DS flies blind.</li>
+          <li><strong>DS → engineering</strong> - a great notebook detector that is never served. It scores well in a slide and catches nothing in production.</li>
+          <li><strong>Engineering → on-call</strong> - alerts fire into an unowned channel. Everyone assumes someone else is watching.</li>
+          <li><strong>On-call → back to DS</strong> - the disposition of each alert is never captured, so the detector never learns. This broken loop is the most common and most damaging gap.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: RACI ============ -->
+  <section class="section" id="raci">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · who is on the hook</span>
+      <h2>The RACI grid <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">The relay tells you the order; RACI tells you who owns each step. <strong>R</strong> does the work, <strong>A</strong> is accountable for the outcome, <strong>C</strong> is consulted. Notice the diagonal: accountability moves along the relay, and the data scientist stays consulted almost everywhere - because the threshold and the detector's health are theirs to defend.</p>
+
+    <table class="clean">
+      <thead><tr><th>Step</th><th>Analyst</th><th>Data Scientist</th><th>ML Eng / DevOps</th><th>On-call / Ops</th></tr></thead>
+      <tbody>
+        <tr><td>Label history + ship baseline</td><td>R / A</td><td>C</td><td>-</td><td>-</td></tr>
+        <tr><td>Build + tune detector, set threshold</td><td>C</td><td>R / A</td><td>C</td><td>-</td></tr>
+        <tr><td>Stream detection + route alerts</td><td>-</td><td>C</td><td>R / A</td><td>C</td></tr>
+        <tr><td>Respond to alerts (disposition)</td><td>-</td><td>C</td><td>C</td><td>R / A</td></tr>
+        <tr><td>Monitor the detector</td><td>C</td><td>A</td><td>C</td><td>R</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <strong>The threshold is not just a model dial</strong>
+      When the data scientist sets the threshold, they are choosing how often on-call gets paged versus how many real anomalies slip through. That is a business trade-off (precision vs recall, session 5), so the DS is accountable for it but should set it <em>with</em> the people who live with the alerts - which is why they are Consulted right across the grid.
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Small team? One person wears several hats<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The grid names five roles, not five people. On a small team one analyst-turned-data-scientist may cover the first two columns, and a platform engineer may own serving and monitoring both. That is fine - what matters is that every <strong>step</strong> has a clear Accountable, not that every role has a distinct headcount. Two rules survive any team size:</p>
+        <ul>
+          <li><strong>No orphan steps.</strong> Walk the five rows and check each has exactly one A. The row that usually goes orphaned is "monitor the detector" - everyone assumes the model still works until it quietly stops.</li>
+          <li><strong>Never merge the loop away.</strong> Even when one person plays both on-call and data scientist, the disposition still has to be written down, not just remembered. The feedback loop is a data flow, not a conversation - if it lives only in someone's head, it is already lost.</li>
+        </ul>
+        <p>The point of RACI here is not bureaucracy; it is to surface the two gaps that sink detection projects - an unowned monitoring step and an uncaptured feedback loop - before they cost you a missed outage.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE FEEDBACK LOOP ============ -->
+  <section class="section" id="feedback">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the loop that makes detection special</span>
+      <h2>On-call feedback retrains the detector <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Here is what makes an anomaly pipeline different from an ordinary dashboard: the last role feeds the first. Every time on-call marks an alert "real" or "false alarm," they are creating exactly the labelled data the whole system was starving for. Captured, that disposition becomes precious training signal - the false alarms teach the detector to fire less, the confirmed hits teach it what a real one looks like. Left uncaptured, the detector never improves and slowly drifts into noise.</p>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Lumen's on-call loop.</strong> An alert fires: sessions dropped hard at 2am. On-call checks, finds a CDN outage - real - and marks it. Next week a similar-looking dip fires; on-call finds a scheduled maintenance window - false alarm - and marks that too. Those two dispositions flow back to the data scientist, who now has labelled examples to retune the threshold and add a maintenance-window rule. Without that loop, the same false alarm fires every month until on-call mutes the whole channel - and then the next real outage goes unseen. The feedback loop is not a nice-to-have; it is what keeps the detector alive.</p>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why this loop is unique to detection<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In most analytics, the humans consume the output and that is the end of the line. In detection, the humans <em>are</em> the label source. Because true anomalies are rare and their truth only emerges through investigation, the on-call disposition is often the <strong>only</strong> ground truth the system will ever get. That is why the loop matters so much more here than in a normal reporting pipeline - and why the single most valuable thing a leader can do is make sure alert dispositions are captured, not lost. If your pipeline has no path from on-call back to the detector, you do not have a detection system; you have an alarm no one can improve.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Take one detection need in your org and map real names onto the five roles: analyst, data scientist, ML engineer/DevOps, on-call/ops, monitoring.</li>
+      <li>For each hand-off, name the artifact that actually gets passed. Where a box is empty, you have found a gap.</li>
+      <li>Trace the feedback loop specifically: when an alert fires and someone decides "real" or "false," where does that decision go? If the answer is "nowhere," that is your highest-value fix.</li>
+      <li>Ask who owns the threshold. If no single person is accountable for how often it pages, that is a second gap.</li>
+      <li>Optional: sketch the RACI grid for your own team and circle the row with no clear A.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">This session is drawn from applied detection practice, with the evaluation framing that anchors the roles:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Industry detection practice (analyst → DS → engineering → ops → monitoring relay)</span><span class="note">Parts 1-3 · the five roles, hand-off artifacts, and the RACI grid</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB, Lavin &amp; Ahmad 2015)</span><span class="note">Part 3 · streaming detection and the cost of alert fatigue that the loop guards against</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · The data scientist hands the ML engineer a tuned detector. What did the analyst hand the data scientist first?</p>
+      <button class="qopt" type="button">A · A health dashboard</button>
+      <button class="qopt" type="button">B · Streaming alerts</button>
+      <button class="qopt" type="button">C · Labels of known incidents plus a baseline detector</button>
+      <p class="qwhy">The analyst profiles history, labels the incidents, and ships a baseline - the honest bar the data scientist's detector must beat.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · What makes the anomaly-detection pipeline different from an ordinary reporting dashboard?</p>
+      <button class="qopt" type="button">A · It uses more expensive infrastructure</button>
+      <button class="qopt" type="button">B · The last role feeds the first - on-call dispositions flow back and retrain the detector</button>
+      <button class="qopt" type="button">C · It has no human involvement</button>
+      <p class="qwhy">Detection has a feedback loop: on-call marking alerts real or false creates the scarce labelled data that improves the detector. That loop is the defining feature.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Who is accountable for the alert threshold, and why is it a business decision?</p>
+      <button class="qopt" type="button">A · The data scientist - the threshold trades how often on-call is paged against how many real anomalies slip through</button>
+      <button class="qopt" type="button">B · The ML engineer - it is a purely technical setting</button>
+      <button class="qopt" type="button">C · No one - it is fixed automatically</button>
+      <p class="qwhy">The threshold is a precision/recall trade-off. The data scientist owns it but sets it with the people who live with the alerts, which is why they are consulted across the grid.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Detection is a relay</b><span>five roles, and the value lives in the hand-offs between them.</span></div>
+      <div class="cheat-item"><b>Analyst</b><span>profiles + labels history, ships a baseline. Hands off: labels + baseline. [b1,b2]</span></div>
+      <div class="cheat-item"><b>Data scientist</b><span>builds + tunes, sets the threshold on a precision/recall trade-off. Hands off: tuned detector. [b3-b9]</span></div>
+      <div class="cheat-item"><b>ML eng / DevOps</b><span>streams detection on live data, routes alerts. Hands off: streaming alerts. [b10]</span></div>
+      <div class="cheat-item"><b>On-call / ops</b><span>responds, marks real or false. Hands off: triaged incidents + feedback. [b10]</span></div>
+      <div class="cheat-item"><b>Monitoring (led by DS)</b><span>still catching? crying wolf? Hands off: a health dashboard. [b10]</span></div>
+      <div class="cheat-item"><b>The feedback loop</b><span>on-call dispositions flow back and retrain the detector - unique to detection, and the most-forgotten piece.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>a5 - measuring detection: precision, recall, and why accuracy lies on rare events.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 4 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a3-methods-no-math.html">← Previous: The methods, without math</a> &nbsp;·&nbsp; <a href="a5-measuring-detection.html">Next: Measuring detection →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

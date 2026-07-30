@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 7 · Time-series anomalies - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 7 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 7 of 10</div>
+    <h1>Time-series anomalies: <span class="accent">when the series itself shifts</span></h1>
+    <p class="sub">So far we have hunted points that stand out from their neighbours. Tonight the anomaly is the series changing character - a level that steps up and stays up, a variance that widens, a drift that a point detector never notices because no single day looks wrong. We build a CUSUM detector from scratch to accumulate those small persistent deviations, then a forecast-residual detector that predicts the next value and flags when reality lands far outside the band. This is the direct handoff from the forecasting course: its monitoring session ends where this one begins.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · a notebook</span>
+      <span class="chip time">~45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-16 · Change-points + CUSUM</span>
+      <span class="a3" style="flex:5">16-42 · Build-along: CUSUM + forecast residual</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Point anomaly vs change-point</h2>
+    </div>
+    <p class="lede">A point anomaly is a <strong>transient</strong> - one day spikes, then the series returns to normal. A change-point is a <strong>sustained shift</strong> - the level, trend, or variance moves to a new regime and stays there. That difference matters: a z-score or isolation forest scores each day against a fixed picture of "normal," so once the new regime becomes the majority, the detector quietly accepts it. Time-series detectors watch the series <em>evolve</em> instead, and that is what catches the drift a point detector sleeps through.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A from-scratch tabular CUSUM detector that accumulates standardized deviations and alarms when the running sum crosses a threshold - catching the sustained collective run a point detector misses - and a forecast-residual detector that predicts each day one step ahead (seasonal-naive) and flags any actual outside a robust residual band. Both scored with precision and recall against the labeled Lumen series.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: CHANGE-POINT + CUSUM ============ -->
+  <section class="section" id="cusum">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · CUSUM &amp; change detection</span>
+      <h2>Accumulate what a point detector misses <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">CUSUM - the cumulative sum control chart (Page, 1954) - keeps a running total of how far each point sits above (or below) an expected level, minus a slack. A single small deviation barely moves it; a <em>persistent</em> drift piles up until the sum crosses a threshold and alarms. That is exactly the anomaly a per-point z-score cannot see: no one day is extreme, but together they have walked the series to a new level.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A transient point spike that returns to normal, versus a change-point where the series steps to a new level and stays there">
+        <style>
+          .b7cT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b7cX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b7cN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b7cT" x="24" y="26">Same series, two very different anomalies</text>
+        <!-- axis -->
+        <line x1="40" y1="210" x2="840" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <!-- divider -->
+        <line x1="452" y1="46" x2="452" y2="210" stroke="#E5E7EB" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <!-- LEFT: transient spike -->
+        <polyline points="48,150 88,144 128,152 168,146 208,150 248,148 288,152 328,146 368,150 408,148 440,151"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <circle cx="248" cy="72" r="6" fill="#DC2626"/>
+        <line x1="248" y1="148" x2="248" y2="78" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="b7cT" x="200" y="60">Point anomaly</text>
+        <text class="b7cX" x="120" y="240">one day spikes, then normal again - transient</text>
+        <!-- RIGHT: change-point / level shift -->
+        <polyline points="470,150 500,148 530,152 560,150 590,149 620,151"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <polyline points="620,110 650,108 680,112 710,109 740,111 770,108 800,112 830,110"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <line x1="620" y1="210" x2="620" y2="96" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="620" cy="110" r="5" fill="#DC2626"/>
+        <rect x="620" y="96" width="212" height="34" rx="8" fill="none" stroke="#DC2626" stroke-width="1.3"/>
+        <text class="b7cT" x="640" y="88">Change-point</text>
+        <text class="b7cX" x="540" y="240">level steps up and stays - sustained shift</text>
+        <text class="b7cN" x="24" y="268">A point detector accepts the new level once it becomes the majority. CUSUM sees the sustained drift and alarms.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a transient point anomaly versus a sustained change-point</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>How tabular CUSUM works<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Work on a <em>standardized residual</em> (deseasonalize first, then scale robustly), then keep two running sums:</p>
+        <ul>
+          <li><strong>High side</strong> - <code>S⁺ = max(0, S⁺ + x - k)</code>. It rewards deviations above a slack <code>k</code> and floors at zero, so noise cannot build it up.</li>
+          <li><strong>Low side</strong> - <code>S⁻ = min(0, S⁻ + x + k)</code>. The mirror image for drops.</li>
+          <li><strong>Alarm</strong> - when <code>S⁺</code> crosses a threshold <code>h</code> (or <code>S⁻</code> crosses <code>-h</code>). Reset to zero and keep scanning.</li>
+        </ul>
+        <p>The slack <code>k</code> (often 0.5 sigma) sets how big a shift you care about; the threshold <code>h</code> trades detection speed against false alarms - the same precision/recall dial as always.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Reach for a library when it gets serious.</strong> <code>ruptures</code> (Truong et al.) offers Pelt, binary segmentation, and window-based change-point detection over multiple cost models, and Basseville &amp; Nikiforov (1993) is the reference text for the theory. Build CUSUM once by hand to own the intuition, then lean on the library for multi-regime, multivariate work.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: FORECAST-RESIDUAL ============ -->
+  <section class="section" id="residual">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · forecast-residual detection</span>
+      <h2>Predict the next value, flag the surprise <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">The forecasting course ended by monitoring its own predictions - and that is a detector. Forecast each day one step ahead (seasonal-naive, or Holt-Winters from that course), then look at the <strong>residual</strong>: actual minus forecast. If the model already captures trend and weekly rhythm, the residuals are small and structureless - so a point that lands far outside their band is a genuine surprise, context already accounted for.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A forecast line with a shaded prediction band; most actual points sit inside the band, and two that fall outside it are flagged red">
+        <style>
+          .b7fT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b7fX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b7fN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b7fT" x="24" y="26">Forecast + prediction band; the actual outside the band is flagged</text>
+        <!-- prediction band (polygon: upper L->R, lower R->L) -->
+        <polygon points="60,120 130,116 200,120 270,114 340,120 410,116 480,120 550,114 620,120 690,116 760,120 820,118 820,174 760,176 690,172 620,176 550,170 480,176 410,172 340,176 270,170 200,176 130,172 60,176"
+                 fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+        <!-- forecast center line -->
+        <polyline points="60,148 130,144 200,148 270,142 340,148 410,144 480,148 550,142 620,148 690,144 760,148 820,146"
+                  fill="none" stroke="#374151" stroke-width="2.5"/>
+        <!-- actual points inside band (charcoal) -->
+        <g fill="#4B5563">
+          <circle cx="60" cy="150" r="4.5"/><circle cx="130" cy="140" r="4.5"/><circle cx="200" cy="152" r="4.5"/>
+          <circle cx="270" cy="146" r="4.5"/><circle cx="410" cy="140" r="4.5"/><circle cx="480" cy="150" r="4.5"/>
+          <circle cx="550" cy="146" r="4.5"/><circle cx="690" cy="148" r="4.5"/><circle cx="760" cy="144" r="4.5"/>
+          <circle cx="820" cy="150" r="4.5"/>
+        </g>
+        <!-- anomalies outside band (red) -->
+        <circle cx="340" cy="78" r="6" fill="#DC2626"/>
+        <line x1="340" y1="120" x2="340" y2="84" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="620" cy="218" r="6" fill="#DC2626"/>
+        <line x1="620" y1="176" x2="620" y2="212" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <!-- legend -->
+        <rect x="60" y="242" width="26" height="12" rx="3" fill="#FEE2E2" stroke="#FCA5A5"/>
+        <text class="b7fX" x="94" y="252">prediction band</text>
+        <line x1="230" y1="248" x2="262" y2="248" stroke="#374151" stroke-width="2.5"/>
+        <text class="b7fX" x="270" y="252">forecast</text>
+        <circle cx="360" cy="248" r="4.5" fill="#4B5563"/><text class="b7fX" x="372" y="252">actual (in band)</text>
+        <circle cx="500" cy="248" r="5" fill="#DC2626"/><text class="b7fN" x="512" y="252">actual outside band = anomaly</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - forecast-residual detection with a robust prediction band</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why residuals, not raw values<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Flagging raw values drowns you in false alarms: every weekend low and every trend high looks "extreme" against a flat mean. Residuals fix that by folding the known structure into the forecast:</p>
+        <ul>
+          <li>Trend and seasonality live in the forecast, so the residual is what the model <em>could not</em> explain.</li>
+          <li>Set the band on a <strong>robust</strong> scale of the residuals - the median and MAD, not the mean and standard deviation - so a few big anomalies do not inflate the very band meant to catch them (the same trap as the z-score in b1).</li>
+          <li>This is why a contextual anomaly - a weekday sitting at a weekend level - shows up here: it is normal in value but far from what the same weekday forecast expected.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>CUSUM from scratch <span class="tag demo">★ 13 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Deseasonalize the Lumen series, standardize the residual robustly, then run a tabular CUSUM by hand. It accumulates the sustained collective run that the per-point z-score in b1 was blind to.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled Lumen series (from b1) so the notebook runs standalone.</p></div>
+      <div class="step"><p>Remove the weekly context (subtract the weekday median) and standardize with median / MAD.</p></div>
+      <div class="step"><p>Walk the tabular CUSUM: two running sums, a slack <code>k</code>, a threshold <code>h</code>, reset on alarm.</p></div>
+      <div class="step"><p>Score precision, recall, and F1 against <code>truth</code> - note it catches the sustained run.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - tabular CUSUM by hand</span>import pandas as pd, numpy as np
+
+# --- rebuild the labeled Lumen series (from b1) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110])
+i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+# --- deseasonalize (weekday median) + robust standardize ---
+resid = s - s.groupby(s.index.dayofweek).transform("median")
+med = resid.median(); mad = 1.4826 * (resid - med).abs().median()
+r = (resid - med) / mad
+
+# --- tabular CUSUM: accumulate deviations beyond slack k, alarm at h ---
+k, h = 0.5, 4.0
+sh = sl = 0.0; hits = []
+for t, x in enumerate(r):
+    sh = max(0.0, sh + x - k)          # high side
+    sl = min(0.0, sl + x + k)          # low side
+    if sh &gt; h or sl &lt; -h:
+        hits.append(t); sh = sl = 0.0  # alarm, then reset
+
+flags = set(hits)
+tp = len(flags &amp; set(truth)); fp = len(flags - set(truth)); fn = len(set(truth) - flags)
+prec = tp/(tp+fp) if tp+fp else 0; rec = tp/(tp+fn) if tp+fn else 0
+f1 = 2*prec*rec/(prec+rec) if prec+rec else 0
+print(f"CUSUM caught {tp}/{len(truth)}  precision {prec:.2f}  recall {rec:.2f}  F1 {f1:.2f}")
+# the accumulation catches the sustained run (70-72) a per-point z-score walks past</div>
+
+    <div class="callout tip">
+      <strong>CUSUM is tuned by <code>k</code> and <code>h</code>, not by luck</strong>
+      Raise <code>h</code> and you get fewer, later, higher-confidence alarms; lower it and you catch smaller shifts sooner at the cost of false alarms. That is the precision/recall trade in two knobs - set it to the cost of a missed shift versus the cost of a muted analyst.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Forecast-residual detector <span class="tag demo">★ 9 min · build your own</span></h2>
+    </div>
+    <p class="lede">Forecast each day one step ahead with a seasonal-naive model (today looks like the same weekday a week ago), then flag any actual whose residual falls outside a robust band. This is the forecasting course's monitoring loop turned into a detector - and because the forecast already knows the weekly context, it catches the contextual dip too.</p>
+
+    <div class="steps">
+      <div class="step"><p>Forecast one step ahead: <code>s.shift(7)</code> is the seasonal-naive prediction.</p></div>
+      <div class="step"><p>Compute residuals and a robust band (median ± a MAD multiple).</p></div>
+      <div class="step"><p>Flag actuals outside the band and score precision, recall, and F1 against <code>truth</code>.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - seasonal-naive residual detector</span>import numpy as np
+
+# seasonal-naive one-step forecast: same weekday, one week back
+fc = s.shift(7)
+resid = (s - fc).dropna()
+
+# robust residual band (median / MAD - not mean / std)
+m = resid.median(); mad = 1.4826 * (resid - m).abs().median()
+band = 3.5 * mad
+pos = np.where(np.abs(resid - m) &gt; band)[0] + 7   # +7 undoes the shift offset
+flags = set(int(p) for p in pos)
+
+tp = len(flags &amp; set(truth)); fp = len(flags - set(truth)); fn = len(set(truth) - flags)
+prec = tp/(tp+fp) if tp+fp else 0; rec = tp/(tp+fn) if tp+fn else 0
+f1 = 2*prec*rec/(prec+rec) if prec+rec else 0
+print(f"residual caught {tp}/{len(truth)}  precision {prec:.2f}  recall {rec:.2f}  F1 {f1:.2f}")
+# for a stronger forecast, swap in statsmodels ExponentialSmoothing (Holt-Winters)
+# from statsmodels.tsa.holtwinters import ExponentialSmoothing</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is the pattern most production monitoring actually uses.</strong> Forecast the metric, band the residual, alert on the breach - it is interpretable ("we expected 1,050 sessions, got 1,480"), it deseasonalizes for free, and it degrades gracefully when the model is wrong. The catch: a forecast-residual detector is only as honest as its band. Fit the band on a clean stretch of history, refresh it as the series drifts, and never let the anomalies you are hunting set the width.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Run the CUSUM detector and sweep the threshold <code>h</code> from 3 to 6. Watch precision rise and recall fall - plot the trade.</li>
+      <li>Turn off the deseasonalize step and rerun CUSUM. Count the extra false alarms the weekly rhythm creates.</li>
+      <li>Compare the CUSUM flags with the forecast-residual flags. Which detector catches the collective run, and which catches the contextual dip?</li>
+      <li>Swap the seasonal-naive forecast for <code>statsmodels</code> ExponentialSmoothing (Holt-Winters) and see whether the tighter forecast sharpens or muddies the residuals.</li>
+      <li>Optional: skim the <code>ruptures</code> docs and run Pelt on the same series - compare its change-points to your CUSUM alarms.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the change-detection canon, handed off from the forecasting course. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Page (1954), "Continuous Inspection Schemes," Biometrika 41 - the CUSUM chart</span><span class="note">Demo 1 · cumulative-sum detection of a persistent shift</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Basseville &amp; Nikiforov (1993), Detection of Abrupt Changes</span><span class="note">Part 1 · change-point theory; <code>ruptures</code> as the practical library</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">learn-timeseries-forecasting-with-phoebe · monitoring session</span><span class="note">Part 2 · seasonal-naive / Holt-Winters forecast, residual band</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What separates a change-point from a point anomaly?</p>
+      <button class="qopt" type="button">A · A change-point is always larger in magnitude</button>
+      <button class="qopt" type="button">B · A point anomaly is transient (returns to normal); a change-point is a sustained shift to a new regime</button>
+      <button class="qopt" type="button">C · A change-point can only be a drop, never a spike</button>
+      <p class="qwhy">The point anomaly is one-off and the series recovers; the change-point moves the level, trend, or variance and stays there - which a fixed-picture point detector eventually accepts.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why does CUSUM catch drifts a per-point z-score misses?</p>
+      <button class="qopt" type="button">A · It uses a neural network</button>
+      <button class="qopt" type="button">B · It has a lower threshold</button>
+      <button class="qopt" type="button">C · It accumulates small deviations over time, so a persistent shift piles up and crosses the threshold even when no single point is extreme</button>
+      <p class="qwhy">CUSUM keeps a running sum. Individually harmless deviations in the same direction add up; a point detector, scoring each day alone, never sees the accumulation.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · In a forecast-residual detector, why set the band with median and MAD?</p>
+      <button class="qopt" type="button">A · A robust scale keeps a few large anomalies from inflating the very band meant to catch them</button>
+      <button class="qopt" type="button">B · It is faster to compute than the mean</button>
+      <button class="qopt" type="button">C · MAD guarantees zero false alarms</button>
+      <p class="qwhy">Mean and standard deviation are dragged upward by the outliers you are hunting, widening the band until it misses them. Median and MAD resist that - the same lesson as the z-score trap in b1.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 7 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Point vs change-point</b><span>transient spike that recovers vs a sustained shift to a new regime.</span></div>
+      <div class="cheat-item"><b>CUSUM</b><span>running sum of deviations minus slack k; alarm when it crosses h. Page (1954).</span></div>
+      <div class="cheat-item"><b>Why CUSUM wins</b><span>accumulates persistent drift no single point makes extreme.</span></div>
+      <div class="cheat-item"><b>k and h</b><span>k = smallest shift you care about; h = precision/recall dial for speed vs false alarms.</span></div>
+      <div class="cheat-item"><b>ruptures</b><span>library for change-point detection (Pelt, binseg, window) when it gets serious.</span></div>
+      <div class="cheat-item"><b>Forecast-residual</b><span>predict next value (seasonal-naive / Holt-Winters), flag actuals outside a robust band.</span></div>
+      <div class="cheat-item"><b>Robust band</b><span>median ± MAD multiple, not mean ± std - anomalies must not set their own band.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b8 - deep anomaly detection: reconstruction error, autoencoders (a cited map).</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 7 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b8-deep-anomaly.html">Next: Deep anomaly detection →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

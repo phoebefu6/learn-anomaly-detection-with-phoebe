@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 3 · The methods, without math - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 3 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 3 of 6</div>
+    <h1>The methods, without math: <span class="accent">a ladder from simple rules to deep models</span></h1>
+    <p class="sub">You do not need the math to make the call. This session walks the method ladder in plain English - rung by rung, from a one-line statistical rule up to a deep model - and tells you WHEN each rung is the right one. It closes with the choice that shapes every detection project: labels are rare, so most detection is unsupervised, and there is no free lunch - you match the method to the kind of anomaly and the data you actually have.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">~45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-24 · The method ladder, rung by rung</span>
+      <span class="a3" style="flex:4">24-40 · Labels + matching method to problem</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The one idea for today</h2>
+    </div>
+    <p class="lede">There is no single "anomaly detector." There is a <strong>ladder of methods</strong>, and each rung earns its place by catching a different kind of odd at a different cost. The simplest rung is a threshold you could explain to your board in a sentence; the top rung is a deep model that needs a data lake and a team. Your job as a leader is not to build any of them - it is to know which rung a given problem needs, and to push back when someone reaches for the top of the ladder to solve a bottom-of-the-ladder problem.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A working mental model of the six method families - statistical, rolling/seasonal, distance/density, isolation, one-class, and deep - what each one catches, what it costs, and the one question that tells you which to reach for. Plus the labels lesson: real detection is almost always unsupervised, so treat any labels you have as precious.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE LADDER ============ -->
+  <section class="section" id="ladder">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the Chandola survey + sklearn families</span>
+      <h2>The method ladder <span class="tag concept">12 min live</span></h2>
+    </div>
+    <p class="lede">Read it from the bottom up. Each rung is more powerful than the one below, and also more expensive - more data, more compute, more to explain. The rule of the ladder: start at the bottom, and only climb when the rung below genuinely cannot see your anomaly.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 410" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A ladder of six anomaly-detection method families from statistical at the bottom to deep at the top, with a rail marking increasing data and complexity going up">
+        <defs>
+          <marker id="a3larr" markerWidth="9" markerHeight="9" refX="5" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="#9CA3AF"/></marker>
+        </defs>
+        <style>
+          .a3lT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a3lN { font: 700 13.5px Inter, sans-serif; }
+          .a3lD { font: 400 12px Inter, sans-serif; }
+          .a3lR { font: 600 11px Inter, sans-serif; fill: #6B7280; }
+        </style>
+        <text class="a3lT" x="24" y="26">Climb only when you must: six families, simplest at the bottom</text>
+        <!-- rail -->
+        <line x1="52" y1="364" x2="52" y2="52" stroke="#D1D5DB" stroke-width="2" marker-end="url(#a3larr)"/>
+        <text class="a3lR" x="30" y="206" transform="rotate(-90 30 206)" text-anchor="middle">more data · more complexity ↑</text>
+        <!-- deep -->
+        <rect x="80" y="48" width="776" height="46" rx="8" fill="#1F2937"/>
+        <text class="a3lN" x="96" y="77" fill="#FFFFFF">Deep</text>
+        <text class="a3lD" x="300" y="77" fill="#E5E7EB">autoencoders - complex, high-dimensional patterns; needs lots of data</text>
+        <!-- one-class -->
+        <rect x="80" y="102" width="776" height="46" rx="8" fill="#374151"/>
+        <text class="a3lN" x="96" y="131" fill="#FFFFFF">One-class</text>
+        <text class="a3lD" x="300" y="131" fill="#E5E7EB">OC-SVM · Elliptic Envelope - learn "normal", flag departures</text>
+        <!-- isolation -->
+        <rect x="80" y="156" width="776" height="46" rx="8" fill="#4B5563"/>
+        <text class="a3lN" x="96" y="185" fill="#FFFFFF">Isolation Forest</text>
+        <text class="a3lD" x="300" y="185" fill="#E5E7EB">anomalies are few + different, so easy to isolate; fast, scalable</text>
+        <!-- distance/density -->
+        <rect x="80" y="210" width="776" height="46" rx="8" fill="#E5E7EB"/>
+        <text class="a3lN" x="96" y="239" fill="#1F2937">Distance / density</text>
+        <text class="a3lD" x="300" y="239" fill="#4B5563">kNN · LOF - points in sparse neighbourhoods; multivariate</text>
+        <!-- rolling/seasonal -->
+        <rect x="80" y="264" width="776" height="46" rx="8" fill="#F3F4F6"/>
+        <text class="a3lN" x="96" y="293" fill="#1F2937">Rolling / seasonal</text>
+        <text class="a3lD" x="300" y="293" fill="#4B5563">moving mean · STL - judge each point against its local context</text>
+        <!-- statistical -->
+        <rect x="80" y="318" width="776" height="46" rx="8" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a3lN" x="96" y="347" fill="#1F2937">Statistical</text>
+        <text class="a3lD" x="300" y="347" fill="#4B5563">z-score · IQR · robust MAD - obvious point spikes; cheap, explainable</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the six method families as a ladder</figcaption>
+    </figure>
+
+    <p class="lede">Here is the same ladder as a quick-reference: what each rung catches, when it fits, and what it costs you.</p>
+
+    <table class="clean">
+      <thead><tr><th>Rung</th><th>Catches</th><th>Reach for it when</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Statistical<br><span style="font-weight:400;color:#6B7280">z-score, IQR, MAD</span></td><td>Obvious point anomalies - a value far from the rest</td><td>One number, roughly stable, and you want an explainable threshold</td><td>Tiny - a line of logic</td></tr>
+        <tr><td>Rolling / seasonal</td><td>Contextual anomalies - odd for their time or season</td><td>The data has a rhythm (weekday, weekend, holiday) that a flat threshold would fight</td><td>Low</td></tr>
+        <tr><td>Distance / density<br><span style="font-weight:400;color:#6B7280">kNN, LOF</span></td><td>Points sitting in a sparse, lonely neighbourhood</td><td>Several signals at once, no clean "normal" sample, moderate data size</td><td>Medium - slows on big data</td></tr>
+        <tr><td>Isolation Forest</td><td>Anything that is easy to separate from the crowd</td><td>Many signals, lots of rows, you want fast and low-fuss</td><td>Medium - scales well</td></tr>
+        <tr><td>One-class<br><span style="font-weight:400;color:#6B7280">OC-SVM, Elliptic Envelope</span></td><td>Departures from a learned shape of "normal"</td><td>You have a clean sample of normal-only data to learn from</td><td>Medium</td></tr>
+        <tr><td>Deep<br><span style="font-weight:400;color:#6B7280">autoencoders</span></td><td>Complex, high-dimensional patterns simpler methods cannot model</td><td>Images, sequences, or rich signals - and a large dataset and a team</td><td>High - data, compute, expertise</td></tr>
+      </tbody>
+    </table>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The bottom three rungs - cheap and often enough<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Most real problems are solved on the bottom three rungs. Do not skip past them for something shinier.</p>
+        <ul>
+          <li><strong>Statistical</strong> - a z-score, an IQR fence, or a robust MAD. It asks: how far is this value from the typical value? Cheap, instant, and you can explain it in one sentence. It catches obvious point spikes and drops, and nothing subtler. The robust version (MAD) matters because a few big outliers can inflate a plain standard deviation and blind it.</li>
+          <li><strong>Rolling / seasonal</strong> - the same idea, but each point is judged against its <em>local or seasonal</em> context instead of the global average. This is the rung that finally catches contextual anomalies: a weekday sitting at a weekend-low level, which a flat threshold waves through. If your data has any rhythm, you climb to here.</li>
+          <li><strong>Distance / density</strong> - when a point has several signals at once, you look at its neighbourhood. kNN asks "how far to your nearest neighbours?"; Local Outlier Factor (LOF) asks the sharper question "is your neighbourhood far sparser than your neighbours' neighbourhoods?" These catch multivariate oddities the bottom two rungs cannot see.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The top three rungs - powerful, and pricier<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Isolation Forest</strong> - built on a lovely intuition: anomalies are few and different, so they are <em>easy to isolate</em>. Split the data with random cuts and the odd points get separated in just a few cuts, while normal points take many. It is fast, scales to lots of rows and columns, and needs little tuning - a strong default when you have many signals.</li>
+          <li><strong>One-class</strong> - instead of hunting outliers directly, learn the <em>shape of normal</em> and flag anything outside it. One-Class SVM draws a tight boundary around the normal region; Elliptic Envelope fits a robust Gaussian bubble. Both need a reasonably clean sample of normal-only data, which is their catch.</li>
+          <li><strong>Deep (autoencoders)</strong> - a neural net learns to compress and rebuild normal data; when it fails to rebuild a point well, that reconstruction error flags an anomaly. This is the rung for genuinely complex, high-dimensional data - images, long sequences, rich sensor streams. It is powerful and hungry: it needs a large dataset, real compute, and expertise, so it is the last rung you climb, not the first.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>The over-reach trap.</strong> A team spends a quarter building an autoencoder to flag a daily traffic spike - a job a z-score does in one line. Deep methods (surveyed in Pang et al., 2021) are real and valuable, but on a single well-behaved metric they are a Ferrari in a car park. The ladder exists so you climb only as high as the anomaly forces you to.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: LABELS ============ -->
+  <section class="section" id="labels">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · supervised vs unsupervised</span>
+      <h2>You almost never have labels <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">There is a fork before you even pick a rung: do you have labelled examples of past anomalies? Usually you do not. Anomalies are rare, and the truth about them arrives late - after an investigation, a customer complaint, a post-mortem. So most detection is <strong>unsupervised</strong>: the method assumes anomalies are rare and different, and scores how much each point stands out, with no answer key. This is why the whole ladder above is built for the no-labels world.</p>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The three label situations, and what each unlocks<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Unsupervised (the common case)</strong> - no labels at all. Every rung of the ladder works here. You cannot directly measure how well you are doing, which makes honest evaluation the hard part (session 5).</li>
+          <li><strong>Semi-supervised</strong> - you have a clean sample of <em>normal</em> data only. This unlocks the one-class rung: learn what normal looks like, flag the rest.</li>
+          <li><strong>Supervised</strong> - you have labelled anomalies. Rare, precious, and heavily imbalanced. It becomes a classification problem with special care, and the labels almost always arrive late via investigation, not up front.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Treat labels as precious</strong>
+          When your ops team confirms "yes, that alert was a real outage," that disposition is a scarce, valuable label. Capture it. Over time those confirmations become the answer key that lets you measure and improve the detector - the feedback loop that session 4 puts at the centre of the pipeline.
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: NO FREE LUNCH ============ -->
+  <section class="section" id="chooser">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · matching method to problem</span>
+      <h2>No free lunch - match the method to the anomaly <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">No method wins everywhere. The right rung is decided by three questions about your problem: is it a time series, do you have a clean sample of normal, and how many signals does each point carry? Walk the chooser and it points you at a family. It is a starting point, not a verdict - but it stops you reaching for the top of the ladder by reflex.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chooser: is it a time series, do you have a normal-only sample, and how many dimensions, each leading to a method family">
+        <defs>
+          <marker id="a3carr" markerWidth="9" markerHeight="9" refX="5" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="#9CA3AF"/></marker>
+        </defs>
+        <style>
+          .a3cT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a3cQ { font: 600 12.5px Inter, sans-serif; fill: #1F2937; }
+          .a3cP { font: 600 12px Inter, sans-serif; fill: #7F1D1D; }
+          .a3cL { font: 600 11px Inter, sans-serif; fill: #6B7280; }
+          .a3cN { font: 600 12px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a3cT" x="24" y="26">Three questions point you at a family</text>
+
+        <!-- Q1 -->
+        <rect x="24" y="44" width="300" height="54" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+        <text class="a3cQ" x="40" y="68">Is it a time series with a</text>
+        <text class="a3cQ" x="40" y="86">seasonal or weekly rhythm?</text>
+        <line x1="324" y1="71" x2="462" y2="66" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="332" y="60">yes</text>
+        <rect x="470" y="48" width="386" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a3cP" x="486" y="72">Rolling / seasonal - deseasonalize, then flag</text>
+        <line x1="174" y1="98" x2="174" y2="140" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="182" y="122">no</text>
+
+        <!-- Q2 -->
+        <rect x="24" y="140" width="300" height="64" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+        <text class="a3cQ" x="40" y="166">Do you have a clean "normal"</text>
+        <text class="a3cQ" x="40" y="184">sample, or labelled anomalies?</text>
+        <line x1="324" y1="158" x2="462" y2="150" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="332" y="146">normal only</text>
+        <rect x="470" y="130" width="386" height="40" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a3cP" x="486" y="154">One-class - OC-SVM or Elliptic Envelope</text>
+        <line x1="324" y1="190" x2="462" y2="198" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="332" y="214">labelled</text>
+        <rect x="470" y="180" width="386" height="40" rx="8" fill="#F9FAFB" stroke="#D1D5DB"/>
+        <text class="a3cN" x="486" y="204" fill="#374151">Supervised - rare; keep labels precious (b9)</text>
+        <line x1="174" y1="204" x2="174" y2="246" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="182" y="228">neither</text>
+
+        <!-- Q3 -->
+        <rect x="24" y="246" width="300" height="54" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+        <text class="a3cQ" x="40" y="270">How many signals does</text>
+        <text class="a3cQ" x="40" y="288">each point carry?</text>
+        <line x1="324" y1="262" x2="462" y2="258" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="332" y="250">one</text>
+        <rect x="470" y="240" width="386" height="38" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a3cP" x="486" y="263">Statistical - z-score, IQR, robust MAD</text>
+        <line x1="324" y1="285" x2="462" y2="300" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="332" y="300">a few, tabular</text>
+        <rect x="470" y="286" width="386" height="38" rx="8" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a3cP" x="486" y="309">Isolation Forest, or LOF for density</text>
+        <line x1="174" y1="300" x2="174" y2="344" stroke="#9CA3AF" stroke-width="1.6"/>
+        <line x1="174" y1="344" x2="462" y2="344" stroke="#9CA3AF" stroke-width="1.6" marker-end="url(#a3carr)"/>
+        <text class="a3cL" x="30" y="320">high-dim / complex</text>
+        <rect x="470" y="326" width="386" height="38" rx="8" fill="#1F2937"/>
+        <text class="a3cP" x="486" y="349" fill="#FEE2E2">Deep - autoencoders; needs lots of data</text>
+
+        <rect x="24" y="388" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a3cN" x="46" y="400">No free lunch - the chooser narrows the field; your data and the anomaly type decide the rung.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the method chooser</figcaption>
+    </figure>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Same company, different rungs.</strong> Lumen watches daily site traffic (one signal, strong weekly rhythm) - that is the rolling/seasonal rung. Its fraud team watches transactions (many signals per event, no clean normal sample) - distance/density or isolation. Its image-QA line inspects product photos (rich, high-dimensional) - the deep rung. One org, three rungs, because the anomaly and the data differ. Asking "which detector is best?" is the wrong question; "which rung does this problem sit on?" is the right one.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Pick one real detection need in your org (a spike, a drop, a fraud pattern, a defect). Write down what a single anomaly looks like.</li>
+      <li>Walk it through the chooser: is it a time series, do you have a clean normal sample, how many signals per point?</li>
+      <li>Pick the rung the chooser lands on, and write one sentence justifying it - what it catches, and why a lower rung would miss it.</li>
+      <li>Sanity-check for over-reach: could a rung below solve it just as well and cheaper? If yes, drop down.</li>
+      <li>Optional: skim the technique families in Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey" - the taxonomy this ladder follows.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Parts 1-2 · the technique families and the supervised/unsupervised framing</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn "Novelty and Outlier Detection" user guide</span><span class="note">Part 1 · the practical families - IsolationForest, LOF, OC-SVM, Elliptic Envelope</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Pang, Shen, Cao &amp; van den Hengel (2021), "Deep Learning for Anomaly Detection: A Review"</span><span class="note">Part 1 · the deep rung, surveyed and cited (not trained here)</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Your metric is a single daily number with a strong weekly rhythm. Which rung fits first?</p>
+      <button class="qopt" type="button">A · A deep autoencoder</button>
+      <button class="qopt" type="button">B · Rolling / seasonal - judge each point against its seasonal context</button>
+      <button class="qopt" type="button">C · One-class SVM</button>
+      <p class="qwhy">One signal with a rhythm sits on the rolling/seasonal rung. A flat threshold would fight the weekly pattern, and a deep model is wild over-reach for a single metric.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why is most real anomaly detection unsupervised?</p>
+      <button class="qopt" type="button">A · Unsupervised methods are always more accurate</button>
+      <button class="qopt" type="button">B · Labels are illegal to use</button>
+      <button class="qopt" type="button">C · Anomalies are rare and the truth arrives late, so labelled examples are scarce</button>
+      <p class="qwhy">You rarely have an answer key up front. Labels come late, via investigation - so methods must score how much each point stands out with no labels, and any labels you get are precious.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · What does "no free lunch" mean for choosing a detector?</p>
+      <button class="qopt" type="button">A · No method wins everywhere - you match the rung to the anomaly type and the data you have</button>
+      <button class="qopt" type="button">B · The most complex method is always safest</button>
+      <button class="qopt" type="button">C · Always start at the top of the ladder</button>
+      <p class="qwhy">The right method depends on the problem - time series, labels, number of signals. Start low on the ladder and climb only when the rung below cannot see your anomaly.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The ladder</b><span>statistical → rolling/seasonal → distance/density → isolation → one-class → deep. Climb only when forced.</span></div>
+      <div class="cheat-item"><b>Statistical</b><span>z-score, IQR, MAD. Obvious point spikes. Cheap and explainable.</span></div>
+      <div class="cheat-item"><b>Rolling / seasonal</b><span>each point vs its local/seasonal context. Catches contextual anomalies.</span></div>
+      <div class="cheat-item"><b>Distance / density</b><span>kNN, LOF. Points in sparse neighbourhoods. Multivariate.</span></div>
+      <div class="cheat-item"><b>Isolation Forest</b><span>few and different, so easy to isolate. Fast, scalable, low-fuss.</span></div>
+      <div class="cheat-item"><b>One-class / deep</b><span>learn "normal" and flag departures; deep for complex, high-dim data with lots of it.</span></div>
+      <div class="cheat-item"><b>Usually unsupervised</b><span>labels are rare and late. Treat any you get as precious.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>a4 - the team and the pipeline: who does what, and the feedback loop.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 3 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="a4-team-pipeline-rr.html">Next: The team + the pipeline →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

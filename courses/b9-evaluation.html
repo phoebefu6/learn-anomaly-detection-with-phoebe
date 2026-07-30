@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 9 · Evaluation - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 9 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 9 of 10</div>
+    <h1>Evaluation: <span class="accent">the honest scoreboard for rare events</span></h1>
+    <p class="sub">Every detector you built flags points; this session tells you which ones are actually any good. We confront why accuracy is a liar on rare events, compute precision, recall, and F1 properly, build the precision-recall curve and PR-AUC (the right summary under heavy imbalance), choose the operating threshold from the cost of a miss versus a false alarm, and meet point-adjustment, the time-series convention that scores a whole anomalous segment as caught if you flag any point inside it. This is the meter behind the b3 live detector.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · a notebook</span>
+      <span class="chip time">Session 9 of 10</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · Precision, recall, PR-AUC</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: curve + point-adjust</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Why evaluation is the hardest part</h2>
+    </div>
+    <p class="lede">You have eight sessions of detectors - statistical, rolling, distance, isolation, one-class, time-series, deep. Tonight is the referee. On rare events, the metric everyone reaches for first is worse than useless: it actively rewards a detector for doing nothing. So we throw accuracy out and build the scoreboard that survives a 1% base rate - precision, recall, F1, and the precision-recall curve summarised as PR-AUC. Then we pick the operating threshold on purpose, from the business cost of a miss versus a false alarm, and handle the one time-series wrinkle that trips people up: how to score a detection that lands inside, but not exactly on, a true anomalous segment. This is the same math the b3 live detector shows moving as you turn the sensitivity dial.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      Precision, recall, and F1 computed from scratch and understood; a full precision-recall curve and PR-AUC from a continuous anomaly score, and the reason PR beats ROC under heavy imbalance; a defensible way to choose the operating threshold from real costs; and a working point-adjustment scorer for time-series segments, with clear eyes on how it can inflate the numbers.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE SCOREBOARD ============ -->
+  <section class="section" id="scoreboard">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · precision, recall, F1</span>
+      <h2>Accuracy is out - these three are in <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Recall the base-rate trap from b1: with anomalies under 1%, a detector that flags nothing scores 99%+ accuracy and catches zero. So accuracy never gets a vote. The honest three come from the confusion matrix on the positive (anomaly) class alone: <strong>precision</strong> asks, of the days you flagged, how many were real; <strong>recall</strong> asks, of the real anomalies, how many you caught; <strong>F1</strong> is their harmonic mean, the single number that punishes a detector for being lopsided.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The four cells, and why F1 not accuracy<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Count four things against the labels, and notice what each metric ignores:</p>
+        <ul>
+          <li><strong>TP</strong> flagged and real · <strong>FP</strong> flagged but normal (the false alarm) · <strong>FN</strong> real but missed (the costly one) · <strong>TN</strong> normal and left alone.</li>
+          <li><strong>Precision = TP / (TP + FP)</strong> - the false-alarm side. Low precision is what causes alert fatigue: the team stops trusting the pager.</li>
+          <li><strong>Recall = TP / (TP + FN)</strong> - the miss side. Low recall is the fraud that slipped through, the outage nobody paged on.</li>
+          <li><strong>F1 = 2PR / (P + R)</strong> - the harmonic mean, so a detector cannot win by acing one and tanking the other. Accuracy leans on TN, and TN is enormous and boring here, which is exactly why it lies.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Extreme imbalance is the normal case, not an edge case.</strong> Card fraud runs near 0.1%, hardware failures far rarer. With 999 normal to 1 anomaly, one lucky true catch amid a flood of false alarms still looks fine to accuracy. Precision and recall report the flood; F1 refuses to hide it. Always report the base rate next to the score, so a reader can judge whether the number is impressive or trivial.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: PR CURVE + PR-AUC ============ -->
+  <section class="section" id="prcurve">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the curve and its area</span>
+      <h2>The precision-recall curve and PR-AUC <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Most detectors do not output a yes or no - they output a <em>score</em> (isolation-forest anomaly score, seasonal residual size, LOF value). Every threshold you could set on that score gives one precision and one recall. Sweep the threshold from strict to loose and you trace the <strong>precision-recall curve</strong>: high precision and low recall on the left, sliding to high recall and low precision on the right. Its area, the <strong>PR-AUC</strong> (average precision), is the single number that summarises the detector across all thresholds - and on heavy imbalance it is the honest one, not ROC-AUC.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A precision-recall curve descending from high precision low recall to low precision high recall, with a chosen operating point ringed, a base-rate floor line, and a note to pick the point from the cost of a miss versus a false alarm">
+        <style>
+          .b9pT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b9pA { font: 600 12px Inter, sans-serif; fill: #4B5563; }
+          .b9pX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b9pN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+          .b9pW { font: 700 12px Inter, sans-serif; fill: #FFFFFF; }
+        </style>
+        <text class="b9pT" x="24" y="26">Sweep the score threshold: each cut gives one (recall, precision)</text>
+        <!-- axes -->
+        <line x1="90" y1="50" x2="90" y2="290" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="90" y1="290" x2="500" y2="290" stroke="#D1D5DB" stroke-width="1.5"/>
+        <text class="b9pA" x="24" y="60">precision</text>
+        <text class="b9pA" x="430" y="312">recall</text>
+        <text class="b9pX" x="70" y="55">1.0</text>
+        <text class="b9pX" x="70" y="294">0</text>
+        <text class="b9pX" x="86" y="308">0</text>
+        <text class="b9pX" x="490" y="308">1.0</text>
+        <!-- base-rate floor (random baseline) -->
+        <line x1="90" y1="278" x2="500" y2="278" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <text class="b9pX" x="360" y="273">random baseline = base rate</text>
+        <!-- PR curve -->
+        <polyline points="90,50 172,61 254,73 336,85 377,119 418,165 459,211 500,252"
+                  fill="none" stroke="#DC2626" stroke-width="2.5"/>
+        <!-- operating point ring -->
+        <circle cx="377" cy="119" r="9" fill="none" stroke="#111827" stroke-width="2"/>
+        <circle cx="377" cy="119" r="4" fill="#DC2626"/>
+        <text class="b9pT" x="300" y="108">chosen operating point</text>
+        <text class="b9pX" x="300" y="140">recall .70 · precision .70</text>
+        <!-- shaded area label -->
+        <text class="b9pA" x="150" y="200">PR-AUC = area under this curve</text>
+        <!-- right note panel -->
+        <rect x="536" y="60" width="320" height="120" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b9pT" x="556" y="88">Pick the point on purpose</text>
+        <text class="b9pX" x="556" y="112">Slide left for precision (fewer false</text>
+        <text class="b9pX" x="556" y="130">alarms), right for recall (fewer misses).</text>
+        <text class="b9pX" x="556" y="154">Where you land is the cost of a miss vs</text>
+        <text class="b9pX" x="556" y="172">the cost of a false alarm - a business call.</text>
+        <rect x="536" y="196" width="320" height="70" rx="12" fill="#1F2937"/>
+        <text class="b9pW" x="556" y="222">PR-AUC over ROC-AUC here</text>
+        <text class="b9pX" x="556" y="244" style="fill:#FEE2E2">ROC's false-positive rate is diluted by</text>
+        <text class="b9pX" x="556" y="262" style="fill:#FEE2E2">the huge normal class, so it looks rosy.</text>
+        <rect x="24" y="316" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b9pN" x="46" y="328">PR-AUC focuses on the rare positive class; report it with the base rate beside it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the precision-recall curve, its area, and the chosen operating point</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why PR-AUC beats ROC-AUC on heavy imbalance<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Both curves sweep a threshold, but they measure different things:</p>
+        <ul>
+          <li><strong>ROC</strong> plots recall against the false-positive rate, FP / (FP + TN). With a giant normal class, TN is enormous, so even thousands of false alarms barely move the false-positive rate. ROC-AUC stays flatteringly high while the pager screams.</li>
+          <li><strong>PR</strong> plots precision against recall. Precision has FP in its denominator without the TN cushion, so every false alarm shows up. The curve, and PR-AUC, react to exactly the failure you care about.</li>
+          <li>The random-chance floor also differs: for ROC it is a fixed diagonal; for PR it is the base rate, so a PR-AUC of 0.4 on a 1% base rate is a genuinely strong detector, not a weak one. Judge PR-AUC relative to the base rate.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Precision, recall, F1, then the whole PR curve <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Compute the three metrics by hand for one set of flags, then feed a continuous anomaly score to sklearn and get the entire precision-recall curve and PR-AUC.</p>
+
+    <div class="steps">
+      <div class="step"><p>Rebuild the labeled Lumen series so the notebook runs standalone.</p></div>
+      <div class="step"><p>From a fixed detector's flags, count TP/FP/FN and compute precision, recall, F1 from scratch.</p></div>
+      <div class="step"><p>Take an IsolationForest anomaly <em>score</em> and sweep every threshold with <code>precision_recall_curve</code>.</p></div>
+      <div class="step"><p>Summarise it with <code>average_precision_score</code> (PR-AUC) and compare it to the base rate.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - metrics from scratch + PR-AUC</span>import pandas as pd, numpy as np
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import precision_recall_curve, average_precision_score
+
+# --- rebuild the labeled Lumen series (standalone) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110])
+i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+y = y.astype(float)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+label = np.zeros(90, int); label[truth] = 1
+
+# --- precision / recall / F1 from scratch, for one fixed set of flags ---
+z = (s - s.mean()) / s.std()
+flags = (np.abs(z) &gt; 3).astype(int)
+tp = int((flags &amp; label).sum())
+fp = int((flags &amp; (1 - label)).sum())
+fn = int(((1 - flags) &amp; label).sum())
+precision = tp / (tp + fp) if tp + fp else 0.0
+recall    = tp / (tp + fn) if tp + fn else 0.0
+f1 = 2*precision*recall / (precision + recall) if precision + recall else 0.0
+print(f"z&gt;3   TP={tp} FP={fp} FN={fn}   P={precision:.2f} R={recall:.2f} F1={f1:.2f}")
+
+# --- a continuous anomaly SCORE -&gt; the whole PR curve ---
+X = s.values.reshape(-1, 1)
+iso = IsolationForest(contamination=0.06, random_state=0).fit(X)
+score = -iso.score_samples(X)                     # higher = more anomalous
+prec, rec, thr = precision_recall_curve(label, score)
+pr_auc = average_precision_score(label, score)
+print(f"PR-AUC (average precision) = {pr_auc:.3f}   base rate = {label.mean():.3f}")</div>
+
+    <div class="callout tip">
+      <strong>Report PR-AUC next to the base rate, always</strong>
+      A PR-AUC means nothing on its own. On a 6.7% base rate it must clear 0.067 just to beat random. Print them together so nobody reads a real result as a bad one, or a trivial one as a triumph. This is the same trap accuracy sets, one level up.
+    </div>
+  </section>
+
+  <!-- ============ PART 3: POINT-ADJUSTMENT ============ -->
+  <section class="section" id="pointadjust">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the time-series wrinkle</span>
+      <h2>Point-adjustment: scoring a segment, not a point <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Time-series anomalies come in segments - an outage lasts an hour, a bot surge runs for a run of days. If your detector flags the middle of a true anomalous segment but not its exact first point, point-wise scoring calls the rest misses, which feels unfair: you did catch the incident. The common convention, <strong>point-adjustment</strong>, fixes this: if any point inside a true segment is flagged, the whole segment counts as detected. It is standard in time-series anomaly papers - and it can quietly inflate your scores, so use it with your eyes open.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A true anomalous segment of five points where the detector flagged only one point inside it; point-wise scores one of five caught while point-adjustment counts all five, illustrating how a single hit can score a whole segment">
+        <style>
+          .b9aT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b9aX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b9aN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+          .b9aL { font: 700 12px Inter, sans-serif; fill: #374151; }
+        </style>
+        <text class="b9aT" x="24" y="26">One true anomalous segment (5 days). The detector flagged only day 3 of it.</text>
+        <!-- true segment shaded band -->
+        <rect x="300" y="70" width="240" height="150" rx="8" fill="#FEF2F2" stroke="#DC2626" stroke-dasharray="4 4"/>
+        <text class="b9aN" x="342" y="62">true anomalous segment</text>
+        <!-- POINT-WISE row -->
+        <text class="b9aL" x="24" y="112">Point-wise</text>
+        <!-- normal points before/after -->
+        <circle cx="120" cy="120" r="6" fill="#4B5563"/><circle cx="180" cy="120" r="6" fill="#4B5563"/><circle cx="240" cy="120" r="6" fill="#4B5563"/>
+        <circle cx="600" cy="120" r="6" fill="#4B5563"/><circle cx="660" cy="120" r="6" fill="#4B5563"/><circle cx="720" cy="120" r="6" fill="#4B5563"/>
+        <!-- segment: only middle flagged red; others charcoal with black true-ring -->
+        <circle cx="320" cy="120" r="6" fill="#4B5563"/><circle cx="320" cy="120" r="9" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <circle cx="380" cy="120" r="6" fill="#4B5563"/><circle cx="380" cy="120" r="9" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <circle cx="440" cy="120" r="6" fill="#DC2626"/><circle cx="440" cy="120" r="9" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <circle cx="500" cy="120" r="6" fill="#4B5563"/><circle cx="500" cy="120" r="9" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <circle cx="560" cy="120" r="6" fill="#4B5563"/><circle cx="560" cy="120" r="9" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <text class="b9aX" x="600" y="145">1 of 5 caught → segment recall 20%</text>
+        <!-- POINT-ADJUSTED row -->
+        <text class="b9aL" x="24" y="188">Point-adjusted</text>
+        <circle cx="120" cy="196" r="6" fill="#4B5563"/><circle cx="180" cy="196" r="6" fill="#4B5563"/><circle cx="240" cy="196" r="6" fill="#4B5563"/>
+        <circle cx="600" cy="196" r="6" fill="#4B5563"/><circle cx="660" cy="196" r="6" fill="#4B5563"/><circle cx="720" cy="196" r="6" fill="#4B5563"/>
+        <circle cx="320" cy="196" r="6" fill="#DC2626"/><circle cx="380" cy="196" r="6" fill="#DC2626"/>
+        <circle cx="440" cy="196" r="6" fill="#DC2626"/>
+        <circle cx="500" cy="196" r="6" fill="#DC2626"/><circle cx="560" cy="196" r="6" fill="#DC2626"/>
+        <text class="b9aX" x="600" y="215">one hit inside → all 5 count → 100%</text>
+        <rect x="24" y="252" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b9aN" x="46" y="264">Caveat: one lucky point can score a long segment. Report point-adjusted next to point-wise, never alone.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - point-adjustment turns one hit inside a true segment into a full catch</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Use it, but guard against the inflation<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Point-adjustment is the near-universal convention in time-series anomaly benchmarks, and it does encode a real truth: catching an incident anywhere inside its window usually means the on-call team is paged in time. But the failure mode is sharp:</p>
+        <ul>
+          <li><strong>The longer the segment, the bigger the free lunch.</strong> One flagged point turns a 100-point outage into a perfect catch. A detector that fires almost at random can score deceptively well.</li>
+          <li><strong>Guardrails</strong> - report point-wise scores alongside; require the hit to fall within a delay budget (paged fast enough to matter); or cap the credit per segment. Never publish point-adjusted numbers on their own.</li>
+          <li>When you compare detectors, hold the scoring convention fixed. A model that looks better only under point-adjustment may just be luckier at landing one point in long segments.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Implement point-adjustment and watch it inflate <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Expand the labels into segments, mark a segment caught if any point inside it was flagged, and score both ways side by side. The gap you see is the inflation you must always disclose.</p>
+
+    <div class="steps">
+      <div class="step"><p>Write <code>segments</code> to find contiguous runs of anomaly labels.</p></div>
+      <div class="step"><p>Write <code>point_adjust</code> to flag a whole true segment when any point in it is flagged.</p></div>
+      <div class="step"><p>Score point-wise and point-adjusted with the same function and compare recall and F1.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - point-adjustment vs point-wise</span>import numpy as np
+
+# ground truth: point anomalies on days 20, 45, 63 and a collective segment 70-72
+label = np.zeros(90, int); label[[20, 45, 63, 70, 71, 72]] = 1
+# a detector that caught the spike, the drop, and only ONE day of the run
+flags = np.zeros(90, int); flags[[20, 45, 71]] = 1
+
+def segments(label):
+    """Inclusive (start, end) ranges of contiguous 1s in the label array."""
+    segs, start = [], None
+    for j, v in enumerate(label):
+        if v and start is None:
+            start = j
+        elif not v and start is not None:
+            segs.append((start, j - 1)); start = None
+    if start is not None:
+        segs.append((start, len(label) - 1))
+    return segs
+
+def point_adjust(flags, label):
+    """If any point inside a true segment is flagged, flag the whole segment."""
+    adj = flags.copy()
+    for a, b in segments(label):
+        if flags[a:b + 1].any():
+            adj[a:b + 1] = 1
+    return adj
+
+def score(flags, label):
+    tp = int((flags &amp; label).sum()); fp = int((flags &amp; (1 - label)).sum())
+    fn = int(((1 - flags) &amp; label).sum())
+    p = tp / (tp + fp) if tp + fp else 0.0
+    r = tp / (tp + fn) if tp + fn else 0.0
+    return p, r, (2*p*r / (p + r) if p + r else 0.0)
+
+p0, r0, f0 = score(flags, label)                          # point-wise
+p1, r1, f1 = score(point_adjust(flags, label), label)     # point-adjusted
+print(f"point-wise     P={p0:.2f} R={r0:.2f} F1={f0:.2f}")
+print(f"point-adjust   P={p1:.2f} R={r1:.2f} F1={f1:.2f}")
+# recall jumps from 0.50 to 0.83 on one extra flagged point - report both, never just the second</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is the meter behind the b3 live detector.</strong> When you slide its sensitivity and watch precision and recall trade off, you are walking the precision-recall curve by hand, one threshold at a time. Everything tonight is what those two live meters mean. And the honest habit is the same at every scale: quote precision, recall, F1, PR-AUC, the base rate, and your scoring convention together - a number without its context is how detectors get oversold.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Compute precision, recall, and F1 from scratch for two of your detectors, and confirm they match sklearn's <code>precision_recall_fscore_support</code>.</li>
+      <li>Build the full precision-recall curve from an IsolationForest or seasonal-residual score and read off the threshold that gives you 90% recall - note the precision you pay for it.</li>
+      <li>Compute both PR-AUC and ROC-AUC on the same score and see how much rosier ROC looks. Explain why to a teammate.</li>
+      <li>Run the point-adjustment scorer and quantify the inflation on the collective segment. Add a delay-budget guardrail and see the score come back down.</li>
+      <li>Optional: skim the NAB scoring methodology and note how it rewards early detection inside a window - a cousin of point-adjustment.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Parts 1-3 · evaluation on rare events, precision/recall over accuracy</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB, Lavin &amp; Ahmad 2015)</span><span class="note">Part 3 · scoring windows for streaming time-series anomalies</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn metrics user guide (precision_recall_curve, average_precision_score)</span><span class="note">Demo 1 · the PR curve and PR-AUC in practice</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Why is PR-AUC preferred over ROC-AUC on heavily imbalanced anomaly data?</p>
+      <button class="qopt" type="button">A · PR-AUC is faster to compute</button>
+      <button class="qopt" type="button">B · ROC-AUC cannot be computed from a score</button>
+      <button class="qopt" type="button">C · ROC's false-positive rate is diluted by the huge normal class, so it looks optimistic; PR focuses on the rare positive class where false alarms show up</button>
+      <p class="qwhy">With a giant TN, ROC-AUC stays high even amid many false alarms. Precision has no TN cushion, so the PR curve and PR-AUC react to the failure you actually care about.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · How should you choose the operating threshold on the PR curve?</p>
+      <button class="qopt" type="button">A · Always use the sklearn default</button>
+      <button class="qopt" type="button">B · From the business cost of a miss versus a false alarm - left for precision, right for recall</button>
+      <button class="qopt" type="button">C · Pick the highest accuracy point</button>
+      <p class="qwhy">The threshold is a business decision, not a default. If a miss is far costlier than a false alarm, move toward recall; if the team is drowning in false alarms, move toward precision.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · What is the main caveat of point-adjustment?</p>
+      <button class="qopt" type="button">A · A single flagged point inside a long true segment scores the whole segment as caught, which can inflate recall and F1</button>
+      <button class="qopt" type="button">B · It only works on point anomalies</button>
+      <button class="qopt" type="button">C · It requires labelled normal data</button>
+      <p class="qwhy">The longer the segment, the bigger the free lunch - one hit can score a 100-point outage as a perfect catch. Report point-adjusted next to point-wise, never alone.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 9 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Accuracy is out</b><span>on rare events it rewards "flag nothing". Never report it alone.</span></div>
+      <div class="cheat-item"><b>Precision</b><span>TP / (TP + FP). Of your flags, how many were real. Low precision → alert fatigue.</span></div>
+      <div class="cheat-item"><b>Recall</b><span>TP / (TP + FN). Of the real anomalies, how many you caught. Low recall → misses.</span></div>
+      <div class="cheat-item"><b>F1</b><span>2PR / (P + R). The harmonic mean; punishes a lopsided detector.</span></div>
+      <div class="cheat-item"><b>PR curve</b><span>sweep the score threshold; each cut is one (recall, precision) point.</span></div>
+      <div class="cheat-item"><b>PR-AUC</b><span>area under it (average precision). Judge it against the base rate, not against 1.0.</span></div>
+      <div class="cheat-item"><b>PR &gt; ROC here</b><span>ROC's FP rate is diluted by the huge normal class; PR isn't.</span></div>
+      <div class="cheat-item"><b>Threshold</b><span>pick it from cost of a miss vs a false alarm, not a default.</span></div>
+      <div class="cheat-item"><b>Point-adjustment</b><span>any hit inside a true segment counts the whole segment - report it next to point-wise.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b10 - productionizing &amp; alerting: streaming, dedup, feedback, drift.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 9 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b10-productionizing-alerting.html">Next: Productionizing &amp; alerting →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 2 · Types of anomalies - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 2 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 2 of 6</div>
+    <h1>Types of anomalies: <span class="accent">point, contextual, and collective, in plain English</span></h1>
+    <p class="sub">Not every anomaly is the same shape, and that matters more than it sounds. There are three kinds - one stands out on its own, one is only wrong for its context, and one is a whole run that goes wrong together. Knowing which kind you are hunting tells you whether a simple detector will ever see it. No math tonight, just the three shapes and why the shape decides the tool.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">15 min read</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:5">3-22 · The three types</span>
+      <span class="a3" style="flex:4">22-40 · Why the type picks the tool</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Last session we settled the one idea - flag the point that does not belong - and the trade-off you price on every project: cost of a miss against cost of a false alarm. Tonight we get sharper about what "does not belong" actually means, because it comes in three flavours. The canonical survey (Chandola, Banerjee &amp; Kumar, 2009) names them <strong>point</strong>, <strong>contextual</strong>, and <strong>collective</strong>. The reason a leader cares is practical: the type decides which detector can even see the anomaly, so getting the type wrong is how detection projects quietly fail.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The three anomaly types in plain language, an everyday example of each, and the single most useful rule of thumb in this course: match the detector to the type. Point anomalies are easy; contextual and collective ones are where the real work - and most of the missed fraud and missed outages - live.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE THREE TYPES ============ -->
+  <section class="section" id="types">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the Chandola et al. taxonomy</span>
+      <h2>The three types, on one series <span class="tag concept">8 min live</span></h2>
+    </div>
+    <p class="lede">Here is the whole taxonomy on a single line of Lumen's daily web traffic. Watch how differently the three kinds behave: one leaps off the chart, one hides in plain sight at a perfectly normal value, and one only reveals itself as a stretch.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One traffic series showing all three anomaly types: a point spike leaping off the chart, a contextual dip that sits at a normal value but is wrong for its weekday, and a collective run of elevated points that are wrong together">
+        <style>
+          .a2tT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a2tX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a2tN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a2tT" x="24" y="26">One traffic line, three kinds of "does not belong"</text>
+        <!-- baseline wavy series -->
+        <polyline points="40,150 80,140 120,155 160,138 200,152 240,140 280,153 320,141 360,151 400,139 440,152 480,142 520,150 560,140 600,153 640,142 680,150 720,140 760,152 800,144"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <!-- point anomaly: spike -->
+        <circle cx="200" cy="66" r="6" fill="#DC2626"/>
+        <line x1="200" y1="152" x2="200" y2="72" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="a2tT" x="164" y="54">Point</text>
+        <text class="a2tX" x="132" y="272">a huge spike, on its own</text>
+        <!-- contextual anomaly: normal value, wrong context -->
+        <circle cx="440" cy="196" r="6" fill="#DC2626"/>
+        <line x1="440" y1="152" x2="440" y2="190" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="a2tT" x="398" y="224">Contextual</text>
+        <text class="a2tX" x="372" y="272">normal value, wrong day</text>
+        <!-- collective anomaly: a run -->
+        <g fill="#DC2626">
+          <circle cx="640" cy="110" r="5"/><circle cx="680" cy="106" r="5"/><circle cx="720" cy="112" r="5"/>
+        </g>
+        <rect x="622" y="92" width="118" height="40" rx="8" fill="none" stroke="#DC2626" stroke-width="1.4"/>
+        <text class="a2tT" x="636" y="82">Collective</text>
+        <text class="a2tX" x="618" y="272">a run that is wrong together</text>
+        <rect x="24" y="256" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a2tN" x="46" y="268">Same series - three very different problems for a detector to catch.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - point, contextual, and collective anomalies on one series</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The three types, in one sentence each<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Point</strong> - a single value far from everything else. The easy case. Example: a card suddenly charged $9,000 when this cardholder never breaks $200. It stands out on its own, so even a crude threshold catches it.</li>
+          <li><strong>Contextual</strong> - a value that is perfectly normal in general, but wrong for <em>this</em> context. Example: a quiet Tuesday. Tuesday traffic at a Sunday level is not a strange number - plenty of days sit there - but for a Tuesday it is alarming. You cannot see it without knowing "it is a Tuesday".</li>
+          <li><strong>Collective</strong> - no single point looks wrong, but a <em>run</em> of them together is. Example: a slow leak - a tank that drips a little longer each hour. Any one reading is plausible; the sustained stretch is the anomaly. You have to look at the window, not the point.</li>
+        </ul>
+        <p>Notice the difficulty climbs as you go down the list. Point anomalies are the ones everyone already catches. Contextual and collective are where the fraud, the slow outages, and the subtle defects hide - and where the rest of this course earns its keep.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Our running brand</span>
+      <p><strong>Lumen carries all three.</strong> The <em>bot surge</em> that triples one day's sessions is a point anomaly - obvious. The <em>weekday sitting at a weekend-low level</em> is contextual - the number is fine, the day is not. And a <em>sustained odd run</em> of elevated evenings would be collective - no single hour alarming, the stretch unmistakable. One brand, one metric, all three shapes.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 2: WHY CONTEXT MATTERS ============ -->
+  <section class="section" id="context">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the type most detectors miss</span>
+      <h2>Why context changes everything <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Contextual anomalies deserve their own moment, because they are the ones simple detectors are blind to - and the ones that cause the most expensive misses. The trap is that the value looks completely normal. The exact same number can be perfectly fine on one day and a red flag on another.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same traffic value of about 400 sessions shown twice: on a weekend it is normal and charcoal, on a weekday it is an anomaly and red, because the expected weekday level is much higher">
+        <style>
+          .a2cT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a2cX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a2cV { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .a2cN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a2cT" x="24" y="26">Same value - 400 sessions - two verdicts</text>
+        <!-- WEEKEND panel -->
+        <rect x="24" y="44" width="400" height="150" rx="12" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a2cT" x="44" y="70">On a WEEKEND</text>
+        <!-- expected weekend band (low) -->
+        <rect x="44" y="120" width="360" height="40" rx="6" fill="#F3F4F6"/>
+        <text class="a2cX" x="52" y="145">expected weekend range</text>
+        <circle cx="300" cy="140" r="8" fill="#4B5563"/>
+        <text class="a2cX" x="52" y="182">400 sits right in the band - normal</text>
+        <!-- WEEKDAY panel -->
+        <rect x="456" y="44" width="400" height="150" rx="12" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a2cT" x="476" y="70">On a WEEKDAY</text>
+        <!-- expected weekday band (high) -->
+        <rect x="476" y="72" width="360" height="40" rx="6" fill="#FEE2E2"/>
+        <text class="a2cN" x="484" y="97">expected weekday range</text>
+        <circle cx="732" cy="150" r="8" fill="#DC2626"/>
+        <text class="a2cN" x="504" y="150">400 is far below - anomaly</text>
+        <line x1="732" y1="112" x2="732" y2="142" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <!-- bottom note -->
+        <rect x="24" y="220" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a2cN" x="46" y="232">The number never changed - only the context did. This is why you deseasonalize before flagging.</text>
+        <text class="a2cX" x="46" y="254">A global detector sees one value, calls it normal both times, and misses the weekday drop entirely.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the same value, normal on a weekend, an anomaly on a weekday</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why the type decides the detector<span class="mini">3 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>This is the single most useful rule in the course, and it is why one detector is never enough:</p>
+        <ul>
+          <li><strong>Global methods</strong> (a simple threshold, a z-score) only ask "is this value extreme overall?" They catch <strong>point</strong> anomalies beautifully and miss <strong>contextual</strong> ones completely - the value is not extreme, only wrong for its day.</li>
+          <li><strong>Context-aware methods</strong> first strip out the expected pattern (the weekly rhythm) and then look at what is left. Now the quiet Tuesday finally stands out. This is what "deseasonalize before flagging" means.</li>
+          <li><strong>Window methods</strong> look at stretches of points rather than one at a time, which is the only way to catch a <strong>collective</strong> anomaly - a run where no single point is alarming.</li>
+        </ul>
+        <p>So when a team proposes a detector, the leader's question is simple: <em>which type are we trying to catch, and can this method even see it?</em> A mismatch there is a guaranteed miss, no matter how sophisticated the model sounds.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3: THE CHOOSER ============ -->
+  <section class="section" id="chooser">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · the one-glance rule of thumb</span>
+      <h2>Which type points to which kind of method <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">You do not need to know the algorithms yet (that is a3). You only need the mapping - which shape of anomaly calls for which broad kind of detector. Keep this picture; it is the spine of the whole method discussion.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chooser mapping each anomaly type to the kind of method that can see it: point to a global threshold, contextual to a deseasonalized detector, collective to a window method">
+        <style>
+          .a2hT { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .a2hI { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a2hX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a2hN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <!-- Point row -->
+        <rect x="24" y="30" width="200" height="52" rx="10" fill="#4B5563"/>
+        <text class="a2hT" x="44" y="54">Point anomaly</text>
+        <text class="a2hX" x="44" y="72" style="fill:#E5E7EB">stands out on its own</text>
+        <line x1="224" y1="56" x2="300" y2="56" stroke="#D1D5DB" stroke-width="2"/>
+        <rect x="300" y="30" width="556" height="52" rx="10" fill="#F3F4F6" stroke="#E5E7EB"/>
+        <text class="a2hI" x="320" y="54">Global threshold - a z-score or IQR on the raw value</text>
+        <text class="a2hX" x="320" y="72">the easy case; most teams already do this</text>
+        <!-- Contextual row -->
+        <rect x="24" y="98" width="200" height="52" rx="10" fill="#DC2626"/>
+        <text class="a2hT" x="44" y="122">Contextual anomaly</text>
+        <text class="a2hT" x="44" y="140" style="fill:#FEE2E2;font-weight:400">wrong for its context</text>
+        <line x1="224" y1="124" x2="300" y2="124" stroke="#D1D5DB" stroke-width="2"/>
+        <rect x="300" y="98" width="556" height="52" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="a2hI" x="320" y="122">Deseasonalize first - remove the weekly pattern, then flag</text>
+        <text class="a2hN" x="320" y="140">global methods are blind here - this is where misses hide</text>
+        <!-- Collective row -->
+        <rect x="24" y="166" width="200" height="52" rx="10" fill="#7F1D1D"/>
+        <text class="a2hT" x="44" y="190">Collective anomaly</text>
+        <text class="a2hT" x="44" y="208" style="fill:#FEE2E2;font-weight:400">a run, wrong together</text>
+        <line x1="224" y1="192" x2="300" y2="192" stroke="#D1D5DB" stroke-width="2"/>
+        <rect x="300" y="166" width="556" height="52" rx="10" fill="#F3F4F6" stroke="#E5E7EB"/>
+        <text class="a2hI" x="320" y="190">Window methods - judge a stretch, not a single point</text>
+        <text class="a2hX" x="320" y="208">needed for slow leaks and sustained odd runs</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - which anomaly type calls for which kind of method</figcaption>
+    </figure>
+
+    <div class="callout tip">
+      <strong>The leader's one question</strong>
+      Whenever someone proposes an anomaly detector, ask which of the three types it is built to catch - and whether the anomalies you actually care about are that type. A global threshold aimed at a contextual problem will look busy, pass its demo, and miss the thing that matters. The next session (a3) walks through the method families themselves, still without math.
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>Think of <strong>three real anomalies you have seen</strong> - a fraud case, an outage, a weird sales day, a quality escape, anything.</li>
+      <li>Classify each into one of the three types: <strong>point</strong> (stood out on its own), <strong>contextual</strong> (normal value, wrong context), or <strong>collective</strong> (a run that was wrong together).</li>
+      <li>For any you labelled contextual, name the context that made it wrong (day of week, season, customer, location) - that is the pattern a detector would have to remove first.</li>
+      <li>Ask which type your current monitoring is actually built for, and whether the anomalies you worry about are that same type.</li>
+      <li>Optional: revisit the taxonomy section of Chandola, Banerjee &amp; Kumar (2009) - the source of these three names.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Parts 1-3 · the point / contextual / collective taxonomy and why the type constrains the method</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A card is charged $9,000 when this cardholder never breaks $200. Which type of anomaly is that?</p>
+      <button class="qopt" type="button">A · Collective - a run that is wrong together</button>
+      <button class="qopt" type="button">B · Point - a single value far from everything else</button>
+      <button class="qopt" type="button">C · Contextual - only wrong for its context</button>
+      <p class="qwhy">One value far from the rest, standing out on its own, is a point anomaly - the easy case a simple threshold can catch.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why do simple global detectors miss contextual anomalies?</p>
+      <button class="qopt" type="button">A · Because contextual anomalies are always tiny</button>
+      <button class="qopt" type="button">B · Because they run too slowly to catch them</button>
+      <button class="qopt" type="button">C · Because the value is perfectly normal overall - it is only wrong for its context, which a global view cannot see</button>
+      <p class="qwhy">A quiet Tuesday sits at a value plenty of days share. Only by removing the weekly pattern (deseasonalizing) does the wrong-for-its-day dip stand out.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · A slow leak where each hourly reading is plausible but the sustained stretch is wrong is which type?</p>
+      <button class="qopt" type="button">A · Collective - no single point is alarming, but the run together is</button>
+      <button class="qopt" type="button">B · Point - one extreme value</button>
+      <button class="qopt" type="button">C · Not an anomaly</button>
+      <p class="qwhy">Collective anomalies live in the window, not the point. You need methods that judge a stretch, because no single reading looks wrong.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Point</b><span>a single value far from the rest. The easy case - a global threshold catches it.</span></div>
+      <div class="cheat-item"><b>Contextual</b><span>normal value, wrong context (a weekday at a weekend level). Deseasonalize first.</span></div>
+      <div class="cheat-item"><b>Collective</b><span>a run that is wrong together, though no single point is. Needs window methods.</span></div>
+      <div class="cheat-item"><b>Everyday examples</b><span>a huge fraud charge (point), a quiet Tuesday (contextual), a slow leak (collective).</span></div>
+      <div class="cheat-item"><b>The type picks the tool</b><span>match detector to type, or you get a guaranteed miss.</span></div>
+      <div class="cheat-item"><b>Global methods</b><span>catch point anomalies, blind to contextual ones.</span></div>
+      <div class="cheat-item"><b>Where misses hide</b><span>contextual and collective - the fraud, slow outages, and subtle defects.</span></div>
+      <div class="cheat-item"><b>The leader's question</b><span>which type is this detector built for, and is that the type I care about?</span></div>
+      <div class="cheat-item"><b>Next session</b><span>a3 - the method families, without math: statistical to ML to deep.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 2 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="a1-why-anomaly-detection.html">← Previous: Why detect anomalies</a> &nbsp;·&nbsp; <a href="a3-methods-no-math.html">Next: The methods, without math →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

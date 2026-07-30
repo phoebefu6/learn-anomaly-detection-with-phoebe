@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leader session 1 · Why detect anomalies - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Leader session 1 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Leader track · Session 1 of 6</div>
+    <h1>Why detect anomalies: <span class="accent">the one idea behind fraud, outages, and intrusions</span></h1>
+    <p class="sub">Fraud alerts, outage detection, quality control on a production line, and security intrusion alarms look like four different problems. They are one idea wearing four uniforms: watch a stream, and flag the thing that does not belong. This session is about why that idea earns its keep, and the single trade-off every leader has to price - the cost of a miss against the cost of a false alarm.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Leader track</span>
+      <span class="chip audience">Leaders: PM · biz · product</span>
+      <span class="chip audience">No code · concepts + decisions</span>
+      <span class="chip time">Start here</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · One idea, four domains</span>
+      <span class="a3" style="flex:5">18-40 · The miss vs false-alarm trade-off</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this leader track works</h2>
+    </div>
+    <p class="lede">Six sessions, no code, one running example: <strong>Lumen</strong>, a skincare brand whose website carries a steady weekly rhythm of daily sessions - and, hidden inside it, a bot-driven traffic surge, an outage-driven drop, and a quiet contextual dip. You will learn to think about anomaly detection the way a leader has to: what an anomaly is, the handful of method families and what each is good for, who does what on the team, how detection is actually measured (a place where the obvious metric lies), and where the pitfalls hide. Tonight is the business case - why this capability pays off, and the one trade-off you will be asked to price on every detection project you fund.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A one-sentence definition of anomaly detection that covers fraud, outages, quality, and security at once; a feel for where it pays off and where it does not; and a clear grip on the central trade-off - cost of a miss versus cost of a false alarm - that decides how sensitive to make any detector you sponsor.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: ONE IDEA, FOUR DOMAINS ============ -->
+  <section class="section" id="one-idea">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the Chandola et al. framing</span>
+      <h2>One idea, four domains <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Fraud detection, outage detection, quality control, and intrusion detection are the four places most organisations meet anomaly detection first. The survey that anchors this field (Chandola, Banerjee &amp; Kumar, 2009) makes the point plainly: these are not four techniques, they are one - <strong>flag the point that does not belong</strong>. Learn it once and you can carry it across every domain your business touches.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four domains - fraud, outage, quality, and security - each showing a mostly-normal charcoal series with one red anomaly, all pointing down to a single idea: flag the point that does not belong">
+        <style>
+          .a1oT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .a1oX { font: 400 11px Inter, sans-serif; fill: #6B7280; }
+          .a1oB { font: 700 15px Inter, sans-serif; fill: #FFFFFF; }
+          .a1oN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <!-- four tiles -->
+        <!-- Fraud -->
+        <rect x="24" y="30" width="196" height="112" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a1oT" x="40" y="54">Fraud</text>
+        <text class="a1oX" x="40" y="72">card charges</text>
+        <polyline points="40,120 62,114 84,118 106,112 128,116 150,110 172,116 194,113" fill="none" stroke="#4B5563" stroke-width="2"/>
+        <circle cx="128" cy="92" r="5" fill="#DC2626"/>
+        <!-- Outage -->
+        <rect x="236" y="30" width="196" height="112" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a1oT" x="252" y="54">Outage</text>
+        <text class="a1oX" x="252" y="72">site traffic</text>
+        <polyline points="252,116 274,112 296,116 318,110 340,116 362,112 384,116 406,113" fill="none" stroke="#4B5563" stroke-width="2"/>
+        <circle cx="340" cy="134" r="5" fill="#DC2626"/>
+        <!-- Quality -->
+        <rect x="448" y="30" width="196" height="112" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a1oT" x="464" y="54">Quality</text>
+        <text class="a1oX" x="464" y="72">part measurements</text>
+        <polyline points="464,116 486,113 508,117 530,112 552,116 574,111 596,116 618,113" fill="none" stroke="#4B5563" stroke-width="2"/>
+        <circle cx="552" cy="90" r="5" fill="#DC2626"/>
+        <!-- Security -->
+        <rect x="660" y="30" width="196" height="112" rx="10" fill="#F9FAFB" stroke="#E5E7EB"/>
+        <text class="a1oT" x="676" y="54">Security</text>
+        <text class="a1oX" x="676" y="72">login attempts</text>
+        <polyline points="676,116 698,113 720,117 742,111 764,116 786,112 808,116 830,113" fill="none" stroke="#4B5563" stroke-width="2"/>
+        <circle cx="764" cy="92" r="5" fill="#DC2626"/>
+        <!-- converging arrows -->
+        <line x1="122" y1="142" x2="380" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="334" y1="142" x2="420" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="546" y1="142" x2="460" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <line x1="758" y1="142" x2="500" y2="210" stroke="#D1D5DB" stroke-width="1.5"/>
+        <!-- center idea box -->
+        <rect x="240" y="212" width="400" height="58" rx="12" fill="#DC2626"/>
+        <text class="a1oB" x="440" y="238" text-anchor="middle">Flag the point that does not belong</text>
+        <text class="a1oX" x="440" y="258" text-anchor="middle" style="fill:#FEE2E2">the same detector idea, four uniforms</text>
+        <!-- legend + note -->
+        <rect x="24" y="290" width="14" height="14" rx="3" fill="#4B5563"/>
+        <text class="a1oX" x="46" y="302">normal</text>
+        <rect x="112" y="290" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a1oX" x="134" y="302">anomaly</text>
+        <text class="a1oN" x="230" y="302">Different data, one question: which point does not fit the pattern?</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one detector idea across fraud, outage, quality, and security</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why it is really one problem<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Strip away the domain and every one of these is the same task: you have a stream of mostly-normal activity, and you want the rare thing that stands out flagged for a human to look at.</p>
+        <ul>
+          <li><strong>Fraud</strong> - most transactions are legitimate; a tiny fraction is not. Flag the charge that does not fit this cardholder's pattern.</li>
+          <li><strong>Outage / incident</strong> - traffic and error rates hum along a normal band; flag the sudden drop or spike that signals something broke.</li>
+          <li><strong>Quality control</strong> - parts come off the line within tolerance; flag the measurement drifting out of spec before a batch is scrapped.</li>
+          <li><strong>Security intrusion</strong> - logins and network flows have a shape; flag the burst of failed attempts or the odd data transfer that says someone is probing.</li>
+        </ul>
+        <p>Because it is one idea, the investment compounds: the team, the tooling, and the judgement you build for one domain transfer to the next.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Our running brand</span>
+      <p><strong>Lumen watches its daily web sessions.</strong> Traffic has a clear weekly rhythm - busy weekdays, quiet weekends. Inside that rhythm hide the anomalies we will chase all course: a <em>bot surge</em> that triples one day's sessions, an <em>outage</em> that drops another to near zero, and a <em>contextual dip</em> where a weekday quietly sits at a weekend-low level. Same idea as fraud or intrusion, just measured in web sessions instead of dollars or packets.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 2: THE TRADE-OFF ============ -->
+  <section class="section" id="tradeoff">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the decision you will actually own</span>
+      <h2>The miss vs false-alarm trade-off <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">Here is the one thing a leader must internalise. Every detector has a sensitivity dial, and you cannot win on both ends. Turn it up and you catch more real anomalies - but you also raise more false alarms. Turn it down and the false alarms quiet down - but real anomalies start slipping through. The whole game is deciding where that dial should sit, and that depends entirely on which mistake costs your business more.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A sensitivity dial: turned down you miss real anomalies, turned up you raise more false alarms; the right operating point depends on which cost is higher">
+        <style>
+          .a1dT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .a1dH { font: 700 13px Inter, sans-serif; fill: #FFFFFF; }
+          .a1dX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .a1dS { font: 400 11.5px Inter, sans-serif; fill: #FEE2E2; }
+          .a1dN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="a1dT" x="24" y="28">Detector sensitivity - one dial, two opposite regrets</text>
+        <!-- the dial track -->
+        <line x1="150" y1="70" x2="730" y2="70" stroke="#D1D5DB" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="440" cy="70" r="12" fill="#DC2626"/>
+        <text class="a1dX" x="150" y="98">Less sensitive</text>
+        <text class="a1dX" x="648" y="98">More sensitive</text>
+        <!-- left pan: cost of a miss -->
+        <rect x="24" y="120" width="400" height="128" rx="12" fill="#7F1D1D"/>
+        <text class="a1dH" x="44" y="148">Cost of a MISS</text>
+        <text class="a1dS" x="44" y="172">A real anomaly slips through unflagged.</text>
+        <text class="a1dS" x="44" y="196">· Fraud clears and the money is gone</text>
+        <text class="a1dS" x="44" y="216">· An outage runs for hours undetected</text>
+        <text class="a1dS" x="44" y="236">· A bad batch ships to customers</text>
+        <!-- right pan: cost of a false alarm -->
+        <rect x="456" y="120" width="400" height="128" rx="12" fill="#374151"/>
+        <text class="a1dH" x="476" y="148">Cost of a FALSE ALARM</text>
+        <text class="a1dS" x="476" y="172" style="fill:#E5E7EB">A normal point gets flagged for nothing.</text>
+        <text class="a1dS" x="476" y="196" style="fill:#E5E7EB">· Wasted investigation time</text>
+        <text class="a1dS" x="476" y="216" style="fill:#E5E7EB">· Alert fatigue - people start ignoring it</text>
+        <text class="a1dS" x="476" y="236" style="fill:#E5E7EB">· A muted detector catches nothing</text>
+        <!-- bottom note -->
+        <rect x="24" y="272" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="a1dN" x="46" y="284">The right operating point is a business call: set the dial by which cost is higher for you.</text>
+        <text class="a1dX" x="46" y="306">Turn it up to catch more (fewer misses, more false alarms); turn it down to fire less (fewer false alarms, more misses).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the sensitivity dial and its two opposite regrets</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Where it pays off - and where it does not<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Anomaly detection pays off most where anomalies are <strong>rare, costly, and buried in too much data for a human to watch</strong> - card fraud across millions of transactions, uptime across thousands of servers, defects across a high-volume line. The rarer and more expensive the event, the more a good detector earns.</p>
+        <p>It pays off least where the answer is already obvious (you do not need a model to see the site is down when it returns errors to everyone), where an anomaly is not actually actionable (flagging something no one will investigate just adds noise), or where a plain business rule already does the job. Part of leadership here is saying no to detection projects that will only generate alerts nobody acts on.</p>
+      </div>
+    </details>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>The dial is set by the cost asymmetry, not by the model.</strong> A cancer screen is tuned to almost never miss - a false alarm means a follow-up test, a miss can be fatal, so it runs hot and accepts extra false alarms. A spam filter is tuned the other way - a missed spam is a minor annoyance, but a real email sent to junk is costly, so it runs cautious. Same math, opposite settings, because the costs are opposite. Your job as sponsor is to state that asymmetry out loud before the team tunes anything.</p>
+    </div>
+  </section>
+
+  <!-- ============ HONESTY RAIL ============ -->
+  <section class="section" id="honesty">
+    <div class="section-kicker">
+      <span class="klabel">One honest warning</span>
+      <h2>Do not judge a detector by its accuracy <span class="tag concept">3 min live</span></h2>
+    </div>
+    <p class="lede">Because anomalies are rare, the most natural metric quietly lies to you. If only one day in two hundred is truly anomalous, a lazy detector that flags <em>nothing at all</em> is right 99.5% of the time - and catches zero real anomalies. "99.5% accurate" sounds like a win and is worthless here.</p>
+    <div class="callout tip">
+      <strong>Ask two better questions instead</strong>
+      When your team shows results, do not accept an accuracy number. Ask: of the things we flagged, how many were real? (precision - it controls false alarms) and of the real anomalies, how many did we catch? (recall - it controls misses). Those two, not accuracy, are the honest scoreboard - and they map straight onto the miss vs false-alarm trade-off you just priced. We give this its own session in <strong>a5 (Measuring detection)</strong>.
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 20-30 min total</span></h2>
+    </div>
+    <ul>
+      <li>List <strong>three places your organisation already watches for anomalies</strong> - they may be automated dashboards, a fraud team, a monitoring alert, or just a person eyeballing a report.</li>
+      <li>For each one, write down the <strong>cost of a miss</strong> (what happens if the anomaly slips through) and the <strong>cost of a false alarm</strong> (what a wasted investigation costs).</li>
+      <li>For each, say which cost is higher - and therefore whether that detector should be tuned to run hot (catch more) or cautious (fire less).</li>
+      <li>Pick the one where the current setting feels wrong (too many false alarms, or too many misses) - that is a candidate for a later session.</li>
+      <li>Optional: skim the abstract of Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey" - the framing this whole track follows.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon and industry practice. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Part 1 · one idea across fraud, outage, quality, and security</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB, Lavin &amp; Ahmad 2015)</span><span class="note">Part 2 + honesty rail · false alarms, alert fatigue, why accuracy misleads</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · What do fraud detection, outage detection, quality control, and intrusion detection have in common?</p>
+      <button class="qopt" type="button">A · They all use the same software vendor</button>
+      <button class="qopt" type="button">B · They all require labelled training data</button>
+      <button class="qopt" type="button">C · They are the same core idea - flag the point that does not belong - in different domains</button>
+      <p class="qwhy">All four are anomaly detection: watch a mostly-normal stream and flag the rare thing that stands out. Learn it once and it transfers across domains.</p>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · Turning a detector's sensitivity up will generally...</p>
+      <button class="qopt" type="button">A · Reduce both misses and false alarms at once</button>
+      <button class="qopt" type="button">B · Catch more real anomalies but also raise more false alarms</button>
+      <button class="qopt" type="button">C · Have no effect on the results</button>
+      <p class="qwhy">You cannot win on both ends. More sensitivity means fewer misses but more false alarms; less sensitivity means the reverse. The dial is a trade-off.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · What decides the right operating point for a detector?</p>
+      <button class="qopt" type="button">A · Which mistake costs the business more - a miss or a false alarm</button>
+      <button class="qopt" type="button">B · Always maximise sensitivity to be safe</button>
+      <button class="qopt" type="button">C · Whatever the model's default setting is</button>
+      <p class="qwhy">The dial is a business decision. A cancer screen runs hot (misses are fatal); a spam filter runs cautious (a lost real email is costly). State the cost asymmetry first.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Leader session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Anomaly detection</b><span>watch a mostly-normal stream and flag the point that does not belong.</span></div>
+      <div class="cheat-item"><b>One idea, four domains</b><span>fraud, outage, quality, and security are the same task in different data.</span></div>
+      <div class="cheat-item"><b>Where it pays off</b><span>rare, costly events buried in too much data for a human to watch.</span></div>
+      <div class="cheat-item"><b>Where it does not</b><span>obvious, non-actionable, or already handled by a plain business rule.</span></div>
+      <div class="cheat-item"><b>The sensitivity dial</b><span>up = catch more but more false alarms; down = fire less but more misses.</span></div>
+      <div class="cheat-item"><b>Cost of a miss</b><span>fraud clears, an outage runs undetected, a bad batch ships.</span></div>
+      <div class="cheat-item"><b>Cost of a false alarm</b><span>wasted investigation, alert fatigue, a muted detector.</span></div>
+      <div class="cheat-item"><b>Accuracy lies</b><span>"flag nothing" scores 99%+ on rare events. Ask precision and recall (a5).</span></div>
+      <div class="cheat-item"><b>Next session</b><span>a2 - the types of anomaly in plain English: point, contextual, collective.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Leader session 1 of 6 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="a2-types-of-anomalies.html">Next: Types of anomalies →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 1 · Anomaly foundations - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 1 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 1 of 10</div>
+    <h1>Anomaly foundations: <span class="accent">the points that do not belong</span></h1>
+    <p class="sub">Fraud, outages, defects, intrusions - every one is a point that does not fit the pattern. This session sets up the running series we hunt anomalies in, our skincare brand Lumen's daily web sessions, defines the three kinds of anomaly you will chase all track, confronts the base-rate problem that makes rare events so slippery, and ships the first detector: a plain z-score baseline, scored the honest way.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · a notebook</span>
+      <span class="chip time">Start here</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Anomalies + the base rate</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: series + baseline</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this track works</h2>
+    </div>
+    <p class="lede">Ten hands-on sessions, one running series: <strong>Lumen</strong>, whose daily website sessions carry a weekly rhythm - and, hidden inside, a bot-driven spike, an outage-driven drop, a contextual dip, and a sustained odd run. You will hunt those with every family of detector in real Python - statistical, distance and density, isolation, one-class, time-series, and a look at deep methods - then learn to measure honestly, serve a detector, and keep it from crying wolf. Tonight lays the foundation: what an anomaly actually is, why rare events break your intuition, and the baseline detector every later method must beat. A running note: most real detection is unsupervised, labels are scarce, and accuracy is a liar on rare events - so we measure with precision and recall from day one.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      The labeled Lumen series built in pandas with four injected anomalies, a clear grip on the three anomaly types (point, contextual, collective), the base-rate problem that makes accuracy meaningless here, and a working z-score baseline detector scored with precision and recall - the honest line every model in this course has to beat.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: THE THREE TYPES ============ -->
+  <section class="section" id="types">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the Chandola et al. taxonomy</span>
+      <h2>Three kinds of anomaly <span class="tag concept">6 min live</span></h2>
+    </div>
+    <p class="lede">Not every anomaly looks the same, and the type decides which detector can see it. The canonical survey (Chandola, Banerjee &amp; Kumar, 2009) splits them into three: a <strong>point</strong> anomaly stands out on its own, a <strong>contextual</strong> anomaly is only odd for its context, and a <strong>collective</strong> anomaly is a run of points that together are wrong.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three anomaly types on a series: a point spike, a contextual dip that is only odd for its weekday, and a collective run of elevated points">
+        <style>
+          .b1tT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b1tX { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+          .b1tN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b1tT" x="24" y="26">One series, three kinds of odd</text>
+        <!-- baseline wavy series -->
+        <polyline points="40,150 80,140 120,155 160,138 200,152 240,140 280,153 320,141 360,151 400,139 440,152 480,142 520,150 560,140 600,153 640,142 680,150 720,140 760,152 800,144"
+                  fill="none" stroke="#4B5563" stroke-width="2"/>
+        <!-- point anomaly: spike -->
+        <circle cx="200" cy="70" r="6" fill="#DC2626"/>
+        <line x1="200" y1="152" x2="200" y2="76" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="b1tT" x="150" y="58">Point</text>
+        <text class="b1tX" x="150" y="250">stands out on its own</text>
+        <!-- contextual anomaly: a dip normal in value but wrong here -->
+        <circle cx="440" cy="196" r="6" fill="#DC2626"/>
+        <line x1="440" y1="152" x2="440" y2="190" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text class="b1tT" x="392" y="224">Contextual</text>
+        <text class="b1tX" x="380" y="250">only odd for its context</text>
+        <!-- collective anomaly: a run -->
+        <g fill="#DC2626">
+          <circle cx="640" cy="110" r="5"/><circle cx="680" cy="106" r="5"/><circle cx="720" cy="112" r="5"/>
+        </g>
+        <rect x="622" y="92" width="118" height="40" rx="8" fill="none" stroke="#DC2626" stroke-width="1.4"/>
+        <text class="b1tT" x="636" y="82">Collective</text>
+        <text class="b1tX" x="624" y="250">a run that is wrong together</text>
+        <rect x="24" y="258" width="0" height="0"/>
+      </svg>
+      <figcaption>🔍 Click to zoom - point, contextual, and collective anomalies</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the type decides the method<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The type is not academic - it tells you which detector can even see the anomaly:</p>
+        <ul>
+          <li><strong>Point</strong> - a single value far from the rest. A global z-score or IQR catches these easily. The bot spike in Lumen is a point anomaly.</li>
+          <li><strong>Contextual</strong> - a value that is normal in the whole dataset but wrong for its context (a weekday sitting at a weekend-low level). Global methods miss it; you must remove the seasonal context first.</li>
+          <li><strong>Collective</strong> - a sequence that is individually plausible but collectively abnormal (a sustained, unexplained run). Needs methods that look at windows, not single points.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p><strong>Fraud is usually contextual or collective.</strong> A $500 purchase is not a point anomaly - plenty of people spend that. It is anomalous <em>in context</em>: this card, this hour, this location, after this sequence of small tests. That is why simple threshold rules miss real fraud, and why we spend this whole course past the global z-score.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: THE BASE RATE ============ -->
+  <section class="section" id="baserate">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · the rare-event trap</span>
+      <h2>Why accuracy lies <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">Anomalies are rare by definition - often well under 1% of the data. That rarity breaks the metric everyone reaches for first. A detector that flags nothing at all is 99.5% accurate and completely useless. This is the base-rate problem, and it is why we never judge a detector by accuracy.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="With anomalies at under one percent, a detector that flags nothing scores 99.5 percent accuracy yet catches zero anomalies, so precision and recall are used instead">
+        <style>
+          .b1bT { font: 700 14px Inter, sans-serif; fill: #FFFFFF; }
+          .b1bI { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+          .b1bX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b1bN { font: 600 13px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b1bI" x="24" y="28">1000 days: 995 normal, 5 anomalies</text>
+        <!-- the "flag nothing" detector -->
+        <rect x="24" y="44" width="520" height="44" rx="8" fill="#4B5563"/><text class="b1bT" x="44" y="71">"Flag nothing" detector</text>
+        <rect x="556" y="44" width="120" height="44" rx="8" fill="#E5E7EB"/><text class="b1bI" x="576" y="71">99.5%</text>
+        <text class="b1bX" x="688" y="71">accuracy - and useless</text>
+        <text class="b1bN" x="24" y="118">It caught 0 of 5 anomalies. Accuracy rewarded it for ignoring the whole problem.</text>
+        <!-- the honest metrics -->
+        <rect x="24" y="140" width="270" height="70" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b1bI" x="44" y="168">Precision</text>
+        <text class="b1bX" x="44" y="188">of the days you flagged,</text>
+        <text class="b1bX" x="44" y="204">how many were real?</text>
+        <rect x="310" y="140" width="270" height="70" rx="10" fill="#FEF2F2" stroke="#DC2626"/>
+        <text class="b1bI" x="330" y="168">Recall</text>
+        <text class="b1bX" x="330" y="188">of the real anomalies,</text>
+        <text class="b1bX" x="330" y="204">how many did you catch?</text>
+        <rect x="596" y="140" width="260" height="70" rx="10" fill="#1F2937"/>
+        <text class="b1bT" x="616" y="168">F1</text>
+        <text class="b1bX" x="616" y="188" style="fill:#FEE2E2">the balance of the two -</text>
+        <text class="b1bX" x="616" y="204" style="fill:#FEE2E2">the number that matters</text>
+        <rect x="24" y="228" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b1bN" x="46" y="240">On rare events, precision and recall are the scoreboard. Accuracy is not invited.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the base-rate problem, and the metrics that survive it</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Supervised, semi-supervised, or unsupervised?<span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>How much labelled truth you have decides the whole approach:</p>
+        <ul>
+          <li><strong>Unsupervised</strong> - no labels; assume anomalies are rare and different, and score how much each point stands out. This is the common case, and most of this course.</li>
+          <li><strong>Semi-supervised</strong> - you have a clean sample of <em>normal</em> data only; learn its shape and flag departures (one-class methods, b6).</li>
+          <li><strong>Supervised</strong> - you have labelled anomalies. Rare and precious, and heavily imbalanced - a classification problem with special care (b9). Real labels usually arrive late, via investigation.</li>
+        </ul>
+        <p>Our Lumen series is labelled only so we can <em>measure</em> honestly. In production you would rarely have those labels up front.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Build the labeled Lumen series <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Construct the running series and its ground-truth labels so every later detector can be scored.</p>
+
+    <div class="steps">
+      <div class="step"><p>Build a daily sessions series with a weekly rhythm on a datetime index.</p></div>
+      <div class="step"><p>Inject four anomalies: a point spike, a point drop, a contextual dip (a weekday at a weekend-low level), and a collective run.</p></div>
+      <div class="step"><p>Record the ground-truth anomaly indices in a label vector - this is what precision and recall are measured against.</p></div>
+      <div class="step"><p>Plot it. See how the point anomalies jump out and the contextual one hides in plain sight.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - the labeled series</span>import pandas as pd, numpy as np
+
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110])          # weekday shape
+i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+y = y.astype(float)
+
+truth = [20, 45, 63, 70, 71, 72]                       # ground-truth anomalies
+y[20] += 430                                           # point spike (bot surge)
+y[45] -= 380                                           # point drop (outage)
+y[63] = y[63] - season[63 % 7] + season[6] - 40        # contextual dip (weekday at weekend level)
+y[[70,71,72]] += [175,190,170]                         # collective run
+
+s = pd.Series(np.round(y), index=idx, name="sessions")
+label = pd.Series(0, index=idx); label.iloc[truth] = 1
+print(s.head(), "\nanomalies:", label.sum(), "of", len(label),
+      f"({label.mean():.1%} base rate)")</div>
+
+    <div class="callout tip">
+      <strong>Labels are for measuring, not for cheating</strong>
+      We inject and record the anomalies only so we can compute precision and recall. The detectors themselves never see <code>label</code> - they run unsupervised on <code>s</code>. Keep that wall up, or you will fool yourself.
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>Ship the z-score baseline <span class="tag demo">★ 8 min · build your own</span></h2>
+    </div>
+    <p class="lede">Before any clever detector, build the baseline it has to beat. A global z-score flags any day more than three standard deviations from the mean. It is three lines, it catches the obvious point anomalies, and it will completely miss the contextual one - which is exactly the lesson.</p>
+
+    <div class="steps">
+      <div class="step"><p>Compute the z-score of every day against the global mean and standard deviation.</p></div>
+      <div class="step"><p>Flag days with |z| above 3, and score precision, recall, and F1 against the labels.</p></div>
+      <div class="step"><p>Note what it misses - in b3 you will watch a seasonal detector catch the contextual anomaly this one cannot see.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - z-score baseline + scoring</span>import numpy as np
+
+z = (s - s.mean()) / s.std()
+flags = set(np.where(np.abs(z) &gt; 3)[0])
+
+truth_set = set(truth)
+tp = len(flags &amp; truth_set); fp = len(flags - truth_set); fn = len(truth_set - flags)
+precision = tp / (tp + fp) if tp + fp else 0
+recall    = tp / (tp + fn) if tp + fn else 0
+f1 = 2*precision*recall / (precision + recall) if precision + recall else 0
+print(f"caught {tp}/{len(truth_set)}  precision {precision:.2f}  recall {recall:.2f}  F1 {f1:.2f}")
+# the global z-score catches the spike and drop, and misses the contextual dip</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>Never skip the baseline.</strong> A three-sigma rule is the "just show the bestsellers" of anomaly detection - shockingly serviceable, and the honest bar. If your isolation forest or autoencoder cannot beat a z-score on F1 (b9), it is not earning its complexity. And note the trap you just felt: the z-score's own huge outliers inflate its standard deviation, blunting it against the smaller anomalies. Robust methods (b2) fix exactly that.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Build the labeled Lumen series and confirm its base rate. Feel how rare the anomalies are.</li>
+      <li>Plot it and classify each injected anomaly by type (point, contextual, collective) by eye.</li>
+      <li>Run the z-score baseline and record precision, recall, and F1. Which anomaly does it miss, and why?</li>
+      <li>Compute the accuracy of a "flag nothing" detector on this series and see for yourself why accuracy is useless here.</li>
+      <li>Optional: skim Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey" - the taxonomy this track follows.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the anomaly-detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Chandola, Banerjee &amp; Kumar (2009), "Anomaly Detection: A Survey," ACM Computing Surveys</span><span class="note">Parts 1-2 · the three anomaly types, supervised/unsupervised framing</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Numenta Anomaly Benchmark (NAB)</span><span class="note">Part 2 · why accuracy fails on rare events</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A weekday whose traffic sits at a normal weekend-low level is which kind of anomaly?</p>
+      <button class="qopt" type="button">A · A point anomaly</button>
+      <button class="qopt" type="button">B · A contextual anomaly - normal in value, wrong for its context</button>
+      <button class="qopt" type="button">C · Not an anomaly at all</button>
+      <p class="qwhy">The value is perfectly normal globally, but wrong for its context (a weekday). Global detectors miss it; you must remove the seasonal context first.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why is accuracy a bad metric for anomaly detection?</p>
+      <button class="qopt" type="button">A · It is too slow to compute</button>
+      <button class="qopt" type="button">B · It needs labelled data</button>
+      <button class="qopt" type="button">C · Anomalies are rare, so a detector that flags nothing scores near-perfect accuracy while catching zero</button>
+      <p class="qwhy">The base-rate problem: with anomalies under 1%, "flag nothing" is 99%+ accurate and useless. Precision and recall are the honest scoreboard.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Why build the z-score baseline first?</p>
+      <button class="qopt" type="button">A · It is the honest line every detector must beat, and it exposes the robustness trap (its own outliers inflate its threshold)</button>
+      <button class="qopt" type="button">B · It is the most accurate detector</button>
+      <button class="qopt" type="button">C · It detects contextual anomalies best</button>
+      <p class="qwhy">A three-sigma rule is a serviceable baseline. If a complex model cannot beat it on F1, it is not earning its complexity - and it reveals why robust methods (b2) are needed.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Anomaly</b><span>a point that does not fit the pattern. Behind fraud, outages, defects, and intrusions.</span></div>
+      <div class="cheat-item"><b>Point</b><span>stands out on its own. Global z-score / IQR catch these.</span></div>
+      <div class="cheat-item"><b>Contextual</b><span>normal in value, wrong for its context. Deseasonalize first, or you miss it.</span></div>
+      <div class="cheat-item"><b>Collective</b><span>a run that is wrong together. Needs window-based methods.</span></div>
+      <div class="cheat-item"><b>Base-rate trap</b><span>anomalies are rare, so accuracy lies. "Flag nothing" scores 99%+ and catches zero.</span></div>
+      <div class="cheat-item"><b>Precision / recall / F1</b><span>of flags, how many real; of reals, how many caught; and their balance. The real scoreboard.</span></div>
+      <div class="cheat-item"><b>Usually unsupervised</b><span>labels are scarce and late. Score how much each point stands out; treat labels as precious.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b2 - statistical detectors: z-score, 3-sigma, IQR, and robust MAD.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 1 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="b2-statistical-detectors.html">Next: Statistical detectors →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>

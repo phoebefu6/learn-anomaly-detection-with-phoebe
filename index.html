@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>learn anomaly detection with phoebe - how machines spot what does not belong</title>
+<link rel="stylesheet" href="assets/style.css?v=1">
+<style>
+  .stats-row { display: flex; gap: 2.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 2.1rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; opacity: .85; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; }
+
+  .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .course-card {
+    border: 1px solid var(--hairline);
+    border-top: 4px solid var(--diff, var(--indigo));
+    border-radius: var(--radius);
+    padding: 1.2rem 1.3rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    text-decoration: none;
+    color: var(--ink);
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+    position: relative;
+  }
+  .course-card:hover { border-color: var(--indigo-soft); border-top-color: var(--diff, var(--indigo)); box-shadow: 0 8px 28px rgba(220,38,38,.15); transform: translateY(-3px); }
+  .course-card .cicon { font-size: 1.7rem; line-height: 1; }
+  .course-card .cnum { font-size: .72rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; letter-spacing: .1em; }
+  .course-card h3 { font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+  .course-card p { font-size: .85rem; color: var(--muted); flex: 1; }
+  .course-card .meta { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  .diff-legend { display: flex; gap: 1rem; margin-top: 1.6rem; font-size: .74rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+  .diff-legend i { display: inline-block; width: .85rem; height: .35rem; border-radius: 999px; margin-right: .35rem; vertical-align: middle; }
+
+  .paths { margin-top: 2.6rem; }
+  .paths h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .paths .plede { color: var(--muted); font-size: .92rem; margin-bottom: .8rem; }
+  .path { display: flex; gap: .55rem; align-items: center; padding: .75rem 0; border-bottom: .5px solid var(--hairline); flex-wrap: wrap; }
+  .path:last-child { border-bottom: none; }
+  .path b { min-width: 15.5rem; font-size: .9rem; }
+  .path .pstep { background: var(--indigo-50); color: var(--indigo); border-radius: 999px; padding: .16rem .68rem; font-weight: 700; font-size: .8rem; text-decoration: none; transition: all .12s ease; }
+  .path .pstep:hover { background: var(--indigo); color: #fff; }
+  .path .parr { color: var(--faint); font-weight: 700; }
+
+  .mm-section { margin-top: 1.6rem; }
+  .mm-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .2rem; }
+  .mm-section .mm-lede { color: var(--muted); font-size: .92rem; margin-bottom: .4rem; }
+  .mm-wrap { border: 1px solid var(--hairline); border-radius: var(--radius); background: linear-gradient(180deg,#fff,#FEE2E2); padding: .6rem; overflow-x: auto; }
+  .mm-svg { width: 100%; height: auto; display: block; max-width: 60rem; margin: 0 auto; min-width: 34rem; }
+  .mm-link { cursor: pointer; text-decoration: none; }
+  .mm-node rect { transition: opacity .15s ease, filter .15s ease; }
+  .mm-node text { pointer-events: none; }
+  .mm-link:hover .mm-node rect { filter: brightness(1.06); }
+  .mm-edge { transition: opacity .15s ease; }
+
+  .rail { margin-top: 1.4rem; border: 1px solid var(--hairline); border-left: 4px solid var(--amber); border-radius: var(--radius); background: var(--amber-50); padding: 1rem 1.2rem; font-size: .9rem; }
+  .rail b { color: var(--amber-ink); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe</div>
+    <h1>How machines spot <span class="accent">what does not belong</span></h1>
+    <p class="sub">The idea behind every fraud alert, outage page, quality reject, and intrusion warning - explained end to end. A leader track that makes every kind of anomaly and every method click in plain English (with a visual for each), and a builder track that implements them in real Python: statistical detectors, distance and density, isolation forests, one-class methods, time-series change detection, and a look at deep models. You even drive a live detector in the browser. And the whole team pipeline - analyst to data scientist to engineering to on-call - laid out so you know who does what.</p>
+    <div class="stats-row">
+      <div class="stat"><b data-count="2">2</b><span>tracks</span></div>
+      <div class="stat"><b data-count="16">16</b><span>sessions</span></div>
+      <div class="stat"><b data-count="45">45</b><span>min per session</span></div>
+      <div class="stat"><b data-count="1">1</b><span>live detector you drive</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>The leader track 🤝 <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· for PMs, product &amp; business leaders · 6 x 45 min · no code, ever</span></h2>
+      <p class="plede">Thinking mode: what an anomaly really is, the kinds you will meet, the ladder of methods and when each fits, who on the team does what, and why measuring detection is a trap for the unwary - each session ends with the questions to ask your team.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/a1-why-anomaly-detection.html" style="--diff:#34D399">
+        <span class="cicon">💡</span>
+        <span class="cnum">Leader 1 · easy</span>
+        <h3>Why detect anomalies</h3>
+        <p>Where detection pays off - fraud, outages, quality, security - and the real trade-off: the cost of a miss versus the cost of a false alarm.</p>
+        <span class="meta"><span class="pill amber">▶ Leaders start here</span></span>
+      </a>
+      <a class="course-card" href="courses/a2-types-of-anomalies.html" style="--diff:#34D399">
+        <span class="cicon">🔍</span>
+        <span class="cnum">Leader 2 · easy</span>
+        <h3>Types of anomalies</h3>
+        <p>Point, contextual, and collective - the three shapes an anomaly takes, and why the type decides which detector can even see it, with a visual for each.</p>
+        <span class="meta"><span class="pill light">Visual explainers</span></span>
+      </a>
+      <a class="course-card" href="courses/a3-methods-no-math.html" style="--diff:#FBBF24">
+        <span class="cicon">🪜</span>
+        <span class="cnum">Leader 3 · medium</span>
+        <h3>The methods, without math</h3>
+        <p>The ladder in plain English: statistical to machine learning to deep - and the supervised-versus-unsupervised choice that shapes everything.</p>
+        <span class="meta"><span class="pill light">The method ladder</span></span>
+      </a>
+      <a class="course-card" href="courses/a4-team-pipeline-rr.html" style="--diff:#FBBF24">
+        <span class="cicon">👥</span>
+        <span class="cnum">Leader 4 · medium</span>
+        <h3>The team + the pipeline (R&amp;R)</h3>
+        <p>Who does what: the analyst labelling and baselining, the data scientist building, engineering streaming it, on-call responding, and monitoring the detector.</p>
+        <span class="meta"><span class="pill light">RACI exercise</span></span>
+      </a>
+      <a class="course-card" href="courses/a5-measuring-detection.html" style="--diff:#FB923C">
+        <span class="cicon">🎯</span>
+        <span class="cnum">Leader 5 · deciding</span>
+        <h3>Measuring detection</h3>
+        <p>Precision and recall, why accuracy lies on rare events, and the real enemy: alert fatigue, the reason most detection systems get muted.</p>
+        <span class="meta"><span class="pill light">Metrics exercise</span></span>
+      </a>
+      <a class="course-card" href="courses/a6-strategy-pitfalls.html" style="--diff:#FB923C">
+        <span class="cicon">🧭</span>
+        <span class="cnum">Leader 6 · deciding</span>
+        <h3>Strategy &amp; pitfalls</h3>
+        <p>Setting thresholds, concept drift, keeping a human in the loop, and the big one: when NOT to auto-flag at all.</p>
+        <span class="meta"><span class="pill light">Roadmap exercise</span></span>
+      </a>
+    </div>
+
+    <div class="paths">
+      <h2>The builder track 🛠️ <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· for analysts, data scientists &amp; engineers · 10 x 45 min · Python + a notebook</span></h2>
+      <p class="plede">One running series, Lumen's daily web sessions with four hidden anomalies, threaded through the demos: you implement each family of detector in real Python and follow one detection from the analyst's first plot to a monitored, alerting production system.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/b1-anomaly-foundations.html" style="--diff:#34D399">
+        <span class="cicon">🏗️</span>
+        <span class="cnum">Builder 1 · easy</span>
+        <h3>Anomaly foundations</h3>
+        <p>The labelled Lumen series, the three anomaly types, the base-rate problem that makes accuracy lie, and the z-score baseline every detector must beat.</p>
+        <span class="meta"><span class="pill amber">▶ Builders start here</span></span>
+      </a>
+      <a class="course-card" href="courses/b2-statistical-detectors.html" style="--diff:#34D399">
+        <span class="cicon">📏</span>
+        <span class="cnum">Builder 2 · easy</span>
+        <h3>Statistical detectors</h3>
+        <p>Z-score and the three-sigma rule, IQR and Tukey fences, and robust MAD - and why the robust versions survive their own outliers.</p>
+        <span class="meta"><span class="pill light">Lumen thresholds</span></span>
+      </a>
+      <a class="course-card" href="courses/b3-rolling-seasonal.html" style="--diff:#FBBF24">
+        <span class="cicon">〰️</span>
+        <span class="cnum">Builder 3 · medium</span>
+        <h3>Rolling &amp; seasonal detectors</h3>
+        <p>Rolling mean and std, EWMA, and the STL-residual detector that finally catches the contextual anomaly - plus a live detector you drive.</p>
+        <span class="meta"><span class="pill light">★ interactive: anomaly-live</span></span>
+      </a>
+      <a class="course-card" href="courses/b4-distance-density.html" style="--diff:#FBBF24">
+        <span class="cicon">🕸️</span>
+        <span class="cnum">Builder 4 · medium</span>
+        <h3>Distance &amp; density</h3>
+        <p>kNN distance to nearest neighbours, and the Local Outlier Factor - flagging points that sit in a sparser neighbourhood than their peers.</p>
+        <span class="meta"><span class="pill light">LOF, cited</span></span>
+      </a>
+      <a class="course-card" href="courses/b5-isolation-forest.html" style="--diff:#FB923C">
+        <span class="cicon">🌲</span>
+        <span class="cnum">Builder 5 · hands-on</span>
+        <h3>Isolation Forest</h3>
+        <p>Anomalies are few and different, so random splits isolate them fast - the elegant tree-based detector (Liu, Ting &amp; Zhou 2008) in scikit-learn.</p>
+        <span class="meta"><span class="pill light">Isolation Forest</span></span>
+      </a>
+      <a class="course-card" href="courses/b6-oneclass-covariance.html" style="--diff:#FB923C">
+        <span class="cicon">⭕</span>
+        <span class="cnum">Builder 6 · hands-on</span>
+        <h3>One-class &amp; covariance</h3>
+        <p>Learn the shape of "normal" and flag departures: One-Class SVM and the Elliptic Envelope - the semi-supervised, normal-only approach.</p>
+        <span class="meta"><span class="pill light">Novelty detection</span></span>
+      </a>
+      <a class="course-card" href="courses/b7-timeseries-anomalies.html" style="--diff:#FB923C">
+        <span class="cicon">📈</span>
+        <span class="cnum">Builder 7 · hands-on</span>
+        <h3>Time-series anomalies</h3>
+        <p>Change-point detection, CUSUM, and forecast-residual anomalies - detecting when the series shifts, tying straight back to the forecasting course.</p>
+        <span class="meta"><span class="pill light">Change detection</span></span>
+      </a>
+      <a class="course-card" href="courses/b8-deep-anomaly.html" style="--diff:#F87171">
+        <span class="cicon">🤖</span>
+        <span class="cnum">Builder 8 · hardest</span>
+        <h3>Deep anomaly detection</h3>
+        <p>Autoencoder reconstruction error and LSTM autoencoders - where deep methods help and where they do not, surveyed and cited (Pang et al. 2021).</p>
+        <span class="meta"><span class="pill light">The frontier, cited</span></span>
+      </a>
+      <a class="course-card" href="courses/b9-evaluation.html" style="--diff:#FBBF24">
+        <span class="cicon">📊</span>
+        <span class="cnum">Builder 9 · medium</span>
+        <h3>Evaluation</h3>
+        <p>Precision, recall, F1, and PR-AUC, point-adjustment for time series, threshold tuning, and handling brutal class imbalance - the honest scoreboard.</p>
+        <span class="meta"><span class="pill light">Score the detector</span></span>
+      </a>
+      <a class="course-card" href="courses/b10-productionizing-alerting.html" style="--diff:#F87171">
+        <span class="cicon">🚨</span>
+        <span class="cnum">Builder 10 · hardest</span>
+        <h3>Productionizing &amp; alerting</h3>
+        <p>Streaming detection, alert routing and deduplication, the feedback loop from on-call, and monitoring the detector so it never quietly rots.</p>
+        <span class="meta"><span class="pill light">Lumen on call</span></span>
+      </a>
+    </div>
+    <div class="diff-legend">
+      <span><i style="background:#34D399"></i>easy - everyone</span>
+      <span><i style="background:#FBBF24"></i>medium</span>
+      <span><i style="background:#FB923C"></i>hands-on / deciding</span>
+      <span><i style="background:#F87171"></i>hardest</span>
+    </div>
+
+    <div class="rail">
+      <b>An honest note on detection:</b> anomalies are rare, so accuracy lies - a detector that flags nothing is 99% accurate and useless. This course measures with precision and recall from the first session, treats alert fatigue as the real failure mode, and teaches the published canon - the Chandola survey, LOF, Isolation Forest, and One-Class SVM - honestly. Most real detection is unsupervised; labels are scarce and late. Deep methods are surveyed and cited, not trained from scratch. The live detector is real math on a small labelled teaching series, not a production system.
+    </div>
+
+    <div class="paths">
+      <h2>Choose your path 🗺️</h2>
+      <p class="plede">Two doors, one course. Leaders get the concepts and the pipeline; builders implement every detector in Python - and both meet at the live detector.</p>
+      <div class="path"><b>🤝 Leader (no code, ever)</b>
+        <a class="pstep" href="courses/a1-why-anomaly-detection.html">a1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a2-types-of-anomalies.html">a2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a3-methods-no-math.html">a3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a4-team-pipeline-rr.html">a4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a5-measuring-detection.html">a5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a6-strategy-pitfalls.html">a6</a>
+      </div>
+      <div class="path"><b>🛠️ Builder (implement in Python)</b>
+        <a class="pstep" href="courses/b1-anomaly-foundations.html">b1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b2-statistical-detectors.html">b2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b3-rolling-seasonal.html">b3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b4-distance-density.html">b4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b5-isolation-forest.html">b5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b6-oneclass-covariance.html">b6</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b7-timeseries-anomalies.html">b7</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b8-deep-anomaly.html">b8</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b9-evaluation.html">b9</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b10-productionizing-alerting.html">b10</a>
+      </div>
+      <div class="path"><b>🌱 Curious follower (a taste)</b>
+        <a class="pstep" href="courses/a1-why-anomaly-detection.html">a1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a2-types-of-anomalies.html">a2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b3-rolling-seasonal.html">b3</a>
+      </div>
+      <div class="path"><b>🚀 Full journey (understand AND build)</b>
+        <a class="pstep" href="courses/a1-why-anomaly-detection.html">a1-a6</a><span class="parr">→</span>
+        <a class="pstep" href="courses/b1-anomaly-foundations.html">b1-b10</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section mm-section">
+    <h2>The knowledge map 🧠</h2>
+    <p class="mm-lede">Both tracks at a glance - hover a session to spotlight its concepts, click any node to jump in.</p>
+    <div class="mm-wrap"><div id="mindmap"></div></div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a> · sources: Chandola et al. survey · LOF (Breunig 2000) · Isolation Forest (Liu 2008) · One-Class SVM · deep review (Pang 2021) · NAB</span>
+  </footer>
+</main>
+
+<script>
+window.MINDMAP_DATA = {
+  title: "Anomaly\nDetection",
+  centerColor: "#7F1D1D",
+  sessions: [
+    { label: "Why detect\nanomalies", href: "courses/a1-why-anomaly-detection.html", color: "#34D399",
+      concepts: [
+        { label: "Fraud + outages", href: "courses/a1-why-anomaly-detection.html" },
+        { label: "Cost of error", href: "courses/a1-why-anomaly-detection.html" } ] },
+    { label: "Types of\nanomalies", href: "courses/a2-types-of-anomalies.html", color: "#34D399",
+      concepts: [
+        { label: "Point", href: "courses/a2-types-of-anomalies.html" },
+        { label: "Contextual", href: "courses/a2-types-of-anomalies.html" },
+        { label: "Collective", href: "courses/a2-types-of-anomalies.html" } ] },
+    { label: "Methods,\nno math", href: "courses/a3-methods-no-math.html", color: "#FBBF24",
+      concepts: [
+        { label: "The ladder", href: "courses/a3-methods-no-math.html" },
+        { label: "Un/supervised", href: "courses/a3-methods-no-math.html" } ] },
+    { label: "Team +\npipeline", href: "courses/a4-team-pipeline-rr.html", color: "#FBBF24",
+      concepts: [
+        { label: "Analyst to DS", href: "courses/a4-team-pipeline-rr.html" },
+        { label: "On-call to monitor", href: "courses/a4-team-pipeline-rr.html" } ] },
+    { label: "Measuring\ndetection", href: "courses/a5-measuring-detection.html", color: "#FB923C",
+      concepts: [
+        { label: "Precision / recall", href: "courses/a5-measuring-detection.html" },
+        { label: "Alert fatigue", href: "courses/a5-measuring-detection.html" } ] },
+    { label: "Strategy +\npitfalls", href: "courses/a6-strategy-pitfalls.html", color: "#FB923C",
+      concepts: [
+        { label: "Thresholds", href: "courses/a6-strategy-pitfalls.html" },
+        { label: "When not to", href: "courses/a6-strategy-pitfalls.html" } ] },
+    { label: "Anomaly\nfoundations", href: "courses/b1-anomaly-foundations.html", color: "#34D399",
+      concepts: [
+        { label: "Three types", href: "courses/b1-anomaly-foundations.html" },
+        { label: "Base rate", href: "courses/b1-anomaly-foundations.html" },
+        { label: "z-score baseline", href: "courses/b1-anomaly-foundations.html" } ] },
+    { label: "Statistical\ndetectors", href: "courses/b2-statistical-detectors.html", color: "#34D399",
+      concepts: [
+        { label: "z / 3-sigma", href: "courses/b2-statistical-detectors.html" },
+        { label: "IQR / MAD", href: "courses/b2-statistical-detectors.html" } ] },
+    { label: "Rolling &\nseasonal", href: "courses/b3-rolling-seasonal.html", color: "#FBBF24",
+      concepts: [
+        { label: "Rolling / EWMA", href: "courses/b3-rolling-seasonal.html" },
+        { label: "STL residual", href: "courses/b3-rolling-seasonal.html" },
+        { label: "Live detector", href: "courses/b3-rolling-seasonal.html" } ] },
+    { label: "Distance &\ndensity", href: "courses/b4-distance-density.html", color: "#FBBF24",
+      concepts: [
+        { label: "kNN distance", href: "courses/b4-distance-density.html" },
+        { label: "LOF", href: "courses/b4-distance-density.html" } ] },
+    { label: "Isolation\nForest", href: "courses/b5-isolation-forest.html", color: "#FB923C",
+      concepts: [
+        { label: "Isolation trees", href: "courses/b5-isolation-forest.html" },
+        { label: "Path length", href: "courses/b5-isolation-forest.html" } ] },
+    { label: "One-class &\ncovariance", href: "courses/b6-oneclass-covariance.html", color: "#FB923C",
+      concepts: [
+        { label: "One-Class SVM", href: "courses/b6-oneclass-covariance.html" },
+        { label: "Elliptic Envelope", href: "courses/b6-oneclass-covariance.html" } ] },
+    { label: "Time-series\nanomalies", href: "courses/b7-timeseries-anomalies.html", color: "#FB923C",
+      concepts: [
+        { label: "Change-point", href: "courses/b7-timeseries-anomalies.html" },
+        { label: "Forecast residual", href: "courses/b7-timeseries-anomalies.html" } ] },
+    { label: "Deep anomaly\ndetection", href: "courses/b8-deep-anomaly.html", color: "#F87171",
+      concepts: [
+        { label: "Autoencoder", href: "courses/b8-deep-anomaly.html" },
+        { label: "LSTM-AE", href: "courses/b8-deep-anomaly.html" } ] },
+    { label: "Evaluation", href: "courses/b9-evaluation.html", color: "#FBBF24",
+      concepts: [
+        { label: "PR-AUC", href: "courses/b9-evaluation.html" },
+        { label: "Point-adjust", href: "courses/b9-evaluation.html" } ] },
+    { label: "Productionizing\n& alerting", href: "courses/b10-productionizing-alerting.html", color: "#F87171",
+      concepts: [
+        { label: "Streaming", href: "courses/b10-productionizing-alerting.html" },
+        { label: "Alert routing", href: "courses/b10-productionizing-alerting.html" },
+        { label: "Feedback loop", href: "courses/b10-productionizing-alerting.html" } ] }
+  ]
+};
+</script>
+<script src="assets/mindmap.js?v=1"></script>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>

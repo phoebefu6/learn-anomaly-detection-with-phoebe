@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder session 4 · Distance &amp; density - learn anomaly detection with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-anomaly-detection-with-phoebe</a> / Builder session 4 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Anomaly Detection with Phoebe · Builder track · Session 4 of 10</div>
+    <h1>Distance &amp; density: <span class="accent">far from your neighbours</span></h1>
+    <p class="sub">Thresholds ask "how far from a line?" Distance and density detectors ask a better question: "how far from your neighbours?" This session builds a feature matrix from the Lumen series, scores each day by its distance to the k-th nearest neighbour, then meets the Local Outlier Factor - which compares a point's density to its neighbours' and so catches anomalies in varying-density data that a global distance walks right past.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Builder track</span>
+      <span class="chip audience">Practitioners: analysts · data scientists · engineers</span>
+      <span class="chip audience">Python 3.10+ · scikit-learn</span>
+      <span class="chip time">45 minutes</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Recap</span>
+      <span class="a2" style="flex:4">3-18 · kNN distance + LOF</span>
+      <span class="a3" style="flex:5">18-42 · Build-along: features, kNN, LOF</span>
+      <span class="a4" style="flex:1">42-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>A different question</h2>
+    </div>
+    <p class="lede">So far every detector has drawn a global line - a z-score band, a Tukey fence, a seasonal residual cutoff. Distance and density methods throw that away and reason locally: an anomaly is a point with no close company. Two ideas carry the session. First, <strong>kNN distance</strong> - score each point by how far its nearest neighbours are; anomalies sit in empty space. Second, the <strong>Local Outlier Factor</strong> (Breunig et al., 2000) - a point is anomalous if its local density is much lower than its neighbours' density, which lets it find outliers even when different regions of the data are packed at different tightness. Both are naturally <em>multivariate</em>: they shine when you have several features, so for a time series we build features first - value, a lag, rolling statistics - and let the geometry do the work.</p>
+    <div class="legend">
+      <span class="pill solid">Live - presented in session</span>
+      <span class="pill light">Self-study - read after class</span>
+      <span class="pill peach">★ Run it now (Python)</span>
+      <span class="pill inkpill">Sources covered (cited)</span>
+    </div>
+    <div class="callout win">
+      <strong>★ What you walk out with today</strong>
+      A feature matrix built from the Lumen series, a kNN-distance detector scored against the truth, a LOF detector on the same features, and a clear, coded demonstration of the one thing LOF does that a global distance cannot: keep a low-density-but-normal point from being wrongly flagged.
+    </div>
+  </section>
+
+  <!-- ============ PART 1: kNN DISTANCE ============ -->
+  <section class="section" id="knn">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · distance to the k-th neighbour</span>
+      <h2>How lonely is this point? <span class="tag concept">7 min live</span></h2>
+    </div>
+    <p class="lede">The simplest neighbour-based score: measure the distance from each point to its k-th nearest neighbour, or the mean distance to its k nearest. Points deep inside a cluster have tiny distances; a point out in empty space has a large one. Sort by that score and the anomalies rise to the top.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A cluster of charcoal normal points. One normal point inside the cluster has short lines to its three nearest neighbours, giving a small kNN distance. A red anomaly point off in empty space has long lines to its nearest neighbours, giving a large kNN distance and getting flagged">
+        <style>
+          .b4kT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .b4kL { font: 700 12.5px Inter, sans-serif; fill: #1F2937; }
+          .b4kX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b4kN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b4kT" x="24" y="26">Distance to your neighbours is the score</text>
+        <!-- the cluster -->
+        <g fill="#4B5563">
+          <circle cx="180" cy="150" r="5"/><circle cx="215" cy="130" r="5"/><circle cx="250" cy="165" r="5"/>
+          <circle cx="205" cy="185" r="5"/><circle cx="270" cy="140" r="5"/><circle cx="240" cy="200" r="5"/>
+          <circle cx="300" cy="175" r="5"/><circle cx="175" cy="205" r="5"/><circle cx="290" cy="210" r="5"/>
+        </g>
+        <!-- highlighted normal point + short neighbour lines -->
+        <line x1="235" y1="168" x2="250" y2="165" stroke="#4B5563" stroke-width="1.4"/>
+        <line x1="235" y1="168" x2="240" y2="200" stroke="#4B5563" stroke-width="1.4"/>
+        <line x1="235" y1="168" x2="205" y2="185" stroke="#4B5563" stroke-width="1.4"/>
+        <circle cx="235" cy="168" r="6" fill="#1F2937"/>
+        <text class="b4kL" x="120" y="250">Normal point</text>
+        <text class="b4kX" x="120" y="268">neighbours are close → small score</text>
+        <!-- anomaly far away + long lines -->
+        <line x1="680" y1="110" x2="300" y2="175" stroke="#DC2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <line x1="680" y1="110" x2="290" y2="140" stroke="#DC2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <line x1="680" y1="110" x2="270" y2="140" stroke="#DC2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <circle cx="680" cy="110" r="7" fill="#DC2626"/>
+        <text class="b4kN" x="600" y="94">Anomaly</text>
+        <text class="b4kX" x="560" y="150">nearest neighbours are far →</text>
+        <text class="b4kN" x="560" y="168">large kNN distance → flagged</text>
+        <rect x="24" y="278" width="14" height="14" rx="3" fill="#DC2626"/>
+        <text class="b4kX" x="46" y="290">Rank every point by its distance to the k-th nearest neighbour; the top scores are your candidates.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - kNN distance: anomalies sit in empty space</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Multivariate by nature - and the dimensionality caveat<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Neighbour methods measure distance in feature space, so they earn their keep when a point is only anomalous across <em>several</em> features at once - a normal traffic volume at a normal hour but from an abnormal device mix. On a raw one-dimensional series they collapse back to something z-score-like, which is why we engineer features first:</p>
+        <ul>
+          <li><strong>value</strong> - the raw session count for the day.</li>
+          <li><strong>lag</strong> - yesterday's value, so a sudden jump becomes a distance.</li>
+          <li><strong>rolling mean / std</strong> - the recent local level and volatility, so a point far from its own neighbourhood stands out.</li>
+        </ul>
+        <p><strong>The curse of dimensionality caveat:</strong> as you add features, distances between all points converge and "nearest" loses meaning - everything looks equidistant. Scale your features (distances are unit-sensitive) and keep the feature set lean. Distance methods are strongest in low-to-moderate dimensions.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2: LOF ============ -->
+  <section class="section" id="lof">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · Local Outlier Factor (Breunig et al., 2000)</span>
+      <h2>Density, relative to your neighbours <span class="tag concept">5 min live</span></h2>
+    </div>
+    <p class="lede">A global distance has one blind spot: real data is not uniformly dense. A point sitting in a naturally sparse region has a large kNN distance and looks anomalous - but it is perfectly normal <em>for its neighbourhood</em>. LOF fixes this by comparing each point's local density to the density of its neighbours. If yours is roughly the same as theirs, LOF ≈ 1 (normal); if yours is far lower, LOF ≫ 1 (anomalous). It is a ratio, so it adapts to whatever density each region happens to have.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A tight dense cluster and a loose sparse cluster. A red outlier sits in the empty gap between them. A sparse-cluster normal point is circled. A global kNN distance wrongly flags the sparse normal because its neighbours are far, but LOF compares local densities and keeps it normal while still flagging the real outlier">
+        <style>
+          .b4lT { font: 700 14px Inter, sans-serif; fill: #1F2937; }
+          .b4lL { font: 700 12.5px Inter, sans-serif; fill: #1F2937; }
+          .b4lX { font: 400 11.5px Inter, sans-serif; fill: #6B7280; }
+          .b4lN { font: 600 12.5px Inter, sans-serif; fill: #7F1D1D; }
+        </style>
+        <text class="b4lT" x="24" y="26">Two densities - where a global distance trips</text>
+        <!-- dense cluster (tight) -->
+        <g fill="#4B5563">
+          <circle cx="150" cy="230" r="4"/><circle cx="165" cy="215" r="4"/><circle cx="140" cy="212" r="4"/>
+          <circle cx="172" cy="235" r="4"/><circle cx="155" cy="248" r="4"/><circle cx="185" cy="222" r="4"/>
+          <circle cx="130" cy="232" r="4"/><circle cx="160" cy="228" r="4"/><circle cx="178" cy="250" r="4"/>
+          <circle cx="145" cy="245" r="4"/>
+        </g>
+        <text class="b4lX" x="110" y="285">dense cluster (tight)</text>
+        <!-- sparse cluster (loose) -->
+        <g fill="#4B5563">
+          <circle cx="600" cy="110" r="4"/><circle cx="660" cy="95" r="4"/><circle cx="700" cy="140" r="4"/>
+          <circle cx="640" cy="150" r="4"/><circle cx="720" cy="100" r="4"/><circle cx="580" cy="150" r="4"/>
+          <circle cx="690" cy="185" r="4"/>
+        </g>
+        <text class="b4lX" x="600" y="215">sparse cluster (loose - big gaps are normal here)</text>
+        <!-- circled sparse-normal -->
+        <circle cx="640" cy="150" r="11" fill="none" stroke="#111827" stroke-width="1.6"/>
+        <text class="b4lL" x="470" y="150">sparse-normal</text>
+        <text class="b4lX" x="470" y="168">global kNN: dist 1.99 → mis-flagged</text>
+        <text class="b4lN" x="470" y="184">LOF 1.36 → correctly kept normal</text>
+        <!-- the real outlier between clusters -->
+        <circle cx="400" cy="185" r="7" fill="#DC2626"/>
+        <text class="b4lN" x="360" y="170">true outlier</text>
+        <text class="b4lX" x="300" y="240">global kNN: dist 2.38 · LOF 2.56 → flagged by both</text>
+        <text class="b4lX" x="24" y="305">LOF is a density ratio, so the sparse cluster's own looseness is its baseline - only a point below its neighbours' density is flagged.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - LOF adapts to local density where a global distance cannot</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Reading <code>negative_outlier_factor_</code><span class="mini">2 min read</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>scikit-learn's <code>LocalOutlierFactor</code> stores its scores in <code>negative_outlier_factor_</code> after <code>fit_predict</code>. A few gotchas:</p>
+        <ul>
+          <li>The stored value is the <em>negative</em> LOF, so normal points sit near <code>-1</code> and anomalies are more negative. Flip the sign to get the familiar LOF where higher = more anomalous.</li>
+          <li>By default it runs in <strong>outlier</strong> mode (fit and predict on the same data). For <strong>novelty</strong> detection - training on clean data, scoring new points - set <code>novelty=True</code> and use <code>.predict()</code>.</li>
+          <li><code>contamination</code> sets the flag rate. It is a precision/recall dial, not a fact about the world - pick it from your alert budget, not by wishful thinking.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO 1 ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Demo 1 of 2</span>
+      <h2>Features + kNN distance <span class="tag demo">★ 12 min · everyone builds</span></h2>
+    </div>
+    <p class="lede">Turn the one-dimensional Lumen series into a feature matrix, then score each day by its mean distance to its k nearest neighbours and check the top scores against the truth.</p>
+
+    <div class="steps">
+      <div class="step"><p>Build features: value, a one-day lag, and rolling mean and std over a week.</p></div>
+      <div class="step"><p>Scale the features, then compute each day's mean distance to its k nearest neighbours.</p></div>
+      <div class="step"><p>Flag the highest-scoring days and score precision, recall, and F1 against <code>truth</code>.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - kNN-distance detector</span>import pandas as pd, numpy as np
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler
+
+# --- rebuild the labeled Lumen series (from b1) ---
+idx = pd.date_range("2026-01-01", periods=90, freq="D")
+season = np.array([30,42,48,40,22,-95,-110]); i = np.arange(90)
+y = 900 + 1.2*i + season[i % 7] + 10*np.sin(i*1.7) + 7*np.cos(i*0.6)
+y = y.astype(float)
+truth = [20, 45, 63, 70, 71, 72]
+y[20] += 430; y[45] -= 380
+y[63] = y[63] - season[63 % 7] + season[6] - 40
+y[[70,71,72]] += [175,190,170]
+s = pd.Series(np.round(y), index=idx, name="sessions")
+
+# --- build a small feature matrix ---
+df = pd.DataFrame({"value": s.values})
+df["lag1"]      = df["value"].shift(1)
+df["roll_mean"] = df["value"].rolling(7).mean()
+df["roll_std"]  = df["value"].rolling(7).std()
+df = df.dropna()                       # drops the first 6 rows (no rolling yet)
+offset = len(s) - len(df)              # = 6, to map rows back to day indices
+X = StandardScaler().fit_transform(df.values)   # scale: distances are unit-sensitive
+
+def score(pos, name):
+    f = set(int(p)+offset for p in pos); t = set(truth)
+    tp = len(f &amp; t); fp = len(f - t); fn = len(t - f)
+    p = tp/(tp+fp) if tp+fp else 0; r = tp/(tp+fn) if tp+fn else 0
+    f1 = 2*p*r/(p+r) if p+r else 0
+    print(f"{name:5s} caught {tp}/{len(t)}  P {p:.2f}  R {r:.2f}  F1 {f1:.2f}  {sorted(f)}")
+
+k = 5
+nn = NearestNeighbors(n_neighbors=k+1).fit(X)   # +1: point 0 is itself
+dist, _ = nn.kneighbors(X)
+knn_score = dist[:, 1:].mean(axis=1)            # mean distance to k neighbours
+top = np.argsort(knn_score)[-6:]                # flag the 6 loneliest days
+score(top, "kNN")
+
+# kNN   caught 4/6  P 0.67  R 0.67  F1 0.67  [20, 21, 45, 46, 71, 72]</div>
+
+    <div class="callout tip">
+      <strong>Scaling is not optional</strong>
+      Distances add up feature by feature, so an unscaled <code>value</code> in the hundreds would drown a <code>roll_std</code> in the tens - the detector would effectively see only one feature. <code>StandardScaler</code> puts every feature on the same footing. Forgetting it is the most common reason a distance detector "does not work".
+    </div>
+  </section>
+
+  <!-- ============ DEMO 2 ============ -->
+  <section class="section" id="demo-2">
+    <div class="section-kicker">
+      <span class="klabel">Demo 2 of 2</span>
+      <h2>LOF, and why local beats global <span class="tag demo">★ 10 min · build your own</span></h2>
+    </div>
+    <p class="lede">Run LOF on the same feature matrix, then settle the argument: on a two-density example, watch a global kNN distance mis-flag a perfectly normal sparse point while LOF keeps it - and still catches the real outlier.</p>
+
+    <div class="steps">
+      <div class="step"><p>Fit <code>LocalOutlierFactor</code> on the Lumen features, read <code>negative_outlier_factor_</code>, flag, and score.</p></div>
+      <div class="step"><p>Build a toy dataset with a dense cluster and a sparse cluster plus one true outlier.</p></div>
+      <div class="step"><p>Compare a global kNN distance against LOF for the outlier and for a normal sparse-cluster point.</p></div>
+    </div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - LOF on the Lumen features</span>from sklearn.neighbors import LocalOutlierFactor
+# (continues from Demo 1: X, offset, truth, score already defined)
+
+lof = LocalOutlierFactor(n_neighbors=20, contamination=0.06)
+pred = lof.fit_predict(X)                 # -1 = anomaly, 1 = normal
+lof_score = -lof.negative_outlier_factor_ # flip sign: higher = more anomalous
+score(np.where(pred == -1)[0], "LOF")
+
+# LOF   caught 4/6  P 0.80  R 0.67  F1 0.73  [20, 21, 45, 71, 72]
+# on Lumen, LOF edges out the global kNN distance on precision (0.80 vs 0.67)</div>
+
+    <div class="prompt-box good"><span class="label">★ Run it now (Python) - global distance vs LOF on varying density</span>import numpy as np
+from sklearn.neighbors import NearestNeighbors, LocalOutlierFactor
+
+rng = np.random.default_rng(7)
+dense  = rng.normal([0, 0], 0.25, size=(60, 2))   # tight cluster
+sparse = rng.normal([5, 5], 1.10, size=(25, 2))   # loose cluster
+Xc = np.vstack([dense, sparse, [[2.5, 2.5]]])     # + one true outlier in the gap
+oi = len(Xc) - 1                                  # the outlier's index
+
+# global kNN distance
+nn = NearestNeighbors(n_neighbors=6).fit(Xc)
+d, _ = nn.kneighbors(Xc); knn = d[:, 1:].mean(1)
+sn = 60 + int(np.argmax(knn[60:85]))              # loneliest NORMAL sparse point
+
+# LOF
+lof = LocalOutlierFactor(n_neighbors=15); lof.fit_predict(Xc)
+L = -lof.negative_outlier_factor_
+
+print(f"global kNN: outlier {knn[oi]:.2f}  vs  sparse-normal {knn[sn]:.2f}")
+print(f"LOF:        outlier {L[oi]:.2f}  vs  sparse-normal {L[sn]:.2f}")
+# global kNN: outlier 2.38 vs sparse-normal 1.99  -> barely different, mis-flags the normal
+# LOF:        outlier 2.56 vs sparse-normal 1.36  -> clean separation (LOF~1 = normal)</div>
+
+    <div class="callout example">
+      <span class="ex-pill">Real world</span>
+      <p><strong>This is exactly the trap in mixed populations.</strong> Power users click ten times more than casual users - a naturally "sparse" region of behaviour. A global distance rule flags every power user as anomalous and floods the queue with false alarms, the fastest route to a muted alert. LOF asks the fairer question - "is this account odd <em>for accounts like it</em>?" - and reserves the flag for the genuinely strange. When your data has sub-populations of different density, prefer LOF.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Try it yourself - this week <span class="tag exercise">◐ 30-45 min total</span></h2>
+    </div>
+    <ul>
+      <li>Reproduce the kNN and LOF scores and confirm they match the commented output.</li>
+      <li>Sweep <code>k</code> (and <code>n_neighbors</code>) from 3 to 30. Watch precision and recall move - small k is jumpy, large k oversmooths.</li>
+      <li>Drop the rolling features and rerun with value + lag only. How much does the leaner feature set cost you, and why?</li>
+      <li>Add three noise features of pure randomness to the matrix and rerun. Watch the curse of dimensionality erode the scores.</li>
+      <li>Optional: read Breunig, Kriegel, Ng &amp; Sander (2000), "LOF: Identifying Density-Based Local Outliers" - the paper that defined the local density ratio.</li>
+    </ul>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Source material</span>
+      <h2>Sources covered (cited)</h2>
+    </div>
+    <p class="lede">Taught from the density-based detection canon. This session covers:</p>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Breunig, Kriegel, Ng &amp; Sander (2000), "LOF: Identifying Density-Based Local Outliers," ACM SIGMOD</span><span class="note">Parts 1-2 · local density ratio, why global distance fails on varying density</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">scikit-learn "Novelty and Outlier Detection" user guide</span><span class="note">Demos · <code>NearestNeighbors</code>, <code>LocalOutlierFactor</code>, novelty vs outlier mode</span></div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions before you go 🎯 <span class="tag exercise">◐ 90 seconds</span></h2>
+    </div>
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · What does the kNN-distance anomaly score measure?</p>
+      <button class="qopt" type="button">A · How far a point is from the global mean</button>
+      <button class="qopt" type="button">B · The distance to the k-th nearest neighbour (or the mean of the k nearest) - large means isolated</button>
+      <button class="qopt" type="button">C · The number of points within a fixed radius</button>
+      <p class="qwhy">Points deep in a cluster have small neighbour distances; a point out in empty space has a large one, so it rises to the top when you rank by the score.</p>
+    </div>
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · What does the Local Outlier Factor compare?</p>
+      <button class="qopt" type="button">A · A point's value against a fixed threshold</button>
+      <button class="qopt" type="button">B · A point's value against yesterday's value</button>
+      <button class="qopt" type="button">C · A point's local density against the local density of its neighbours - a ratio near 1 is normal</button>
+      <p class="qwhy">Because LOF is a density ratio, each region's own tightness becomes its baseline, so it flags a point only when it is sparse relative to its neighbours.</p>
+    </div>
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · When does LOF clearly beat a global kNN distance?</p>
+      <button class="qopt" type="button">A · When the data has sub-populations of different density - a global distance mis-flags normal points in the sparse ones</button>
+      <button class="qopt" type="button">B · When the data is perfectly uniform in density</button>
+      <button class="qopt" type="button">C · When there is only a single feature</button>
+      <p class="qwhy">A naturally sparse-but-normal point has a large global distance and gets wrongly flagged; LOF's local ratio keeps it normal while still catching the true outlier.</p>
+    </div>
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Builder session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>kNN distance</b><span>score = distance to the k-th nearest neighbour (or mean of k). Big = isolated = anomalous.</span></div>
+      <div class="cheat-item"><b>LOF</b><span>ratio of a point's local density to its neighbours'. ≈ 1 normal, ≫ 1 anomalous (Breunig 2000).</span></div>
+      <div class="cheat-item"><b>Local beats global</b><span>on varying-density data, a global distance mis-flags sparse-but-normal points; LOF does not.</span></div>
+      <div class="cheat-item"><b>Multivariate</b><span>these methods shine with several features; on a raw 1-D series they collapse to a z-score.</span></div>
+      <div class="cheat-item"><b>Feature a series first</b><span>value + lag + rolling mean/std turn time into geometry the detectors can read.</span></div>
+      <div class="cheat-item"><b>Scale everything</b><span>distances are unit-sensitive - <code>StandardScaler</code> before <code>NearestNeighbors</code> or LOF.</span></div>
+      <div class="cheat-item"><b>Curse of dimensionality</b><span>too many features and all distances converge; keep the set lean.</span></div>
+      <div class="cheat-item"><b>Next session</b><span>b5 - Isolation Forest: isolate anomalies by random splits instead of measuring distance.</span></div>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>Builder session 4 of 10 · learn-anomaly-detection-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="b3-rolling-seasonal.html">← Prev: Rolling &amp; seasonal</a> &nbsp;·&nbsp; <a href="b5-isolation-forest.html">Next: Isolation Forest →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+</body>
+</html>
