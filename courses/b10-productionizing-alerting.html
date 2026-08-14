@@ -205,7 +205,7 @@ print(f"\n{len(alerts)} deduplicated alerts (the 3-day run fired once)")</div>
     <p class="lede">A shipped detector is not done - "normal" drifts as the product grows, seasons turn, and traffic mix shifts, so a threshold that was precise in spring floods the pager by autumn. The fix is a feedback loop: every alert comes back marked real or false by the responder, and those precious labels become a rolling precision you watch like a vital sign. When it slides below a floor, you have caught alert fatigue <em>before</em> the team mutes you - time to re-tune the threshold or retrain.</p>
 
     <figure class="zoomable">
-      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line of rolling precision declining alert by alert, crossing below a floor line where a retrain is triggered, showing alert fatigue caught early">
+      <svg viewBox="0 0 880 318" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line of rolling precision declining alert by alert, crossing below a floor line where a retrain is triggered, showing alert fatigue caught early">
         <style>
           .b0dT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
           .b0dA { font: 600 12px Inter, sans-serif; fill: #4B5563; }
@@ -220,7 +220,7 @@ print(f"\n{len(alerts)} deduplicated alerts (the 3-day run fired once)")</div>
         <text class="b0dA" x="20" y="66">precision</text>
         <text class="b0dX" x="70" y="64">1.0</text>
         <text class="b0dX" x="70" y="244">0</text>
-        <text class="b0dA" x="440" y="262">alerts over time →</text>
+        <text class="b0dA" x="440" y="280">alerts over time →</text>
         <!-- floor line -->
         <line x1="90" y1="150" x2="560" y2="150" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="4 4"/>
         <text class="b0dX" x="470" y="145">floor = 0.5</text>
@@ -248,7 +248,7 @@ print(f"\n{len(alerts)} deduplicated alerts (the 3-day run fired once)")</div>
         <text class="b0dW" x="616" y="184">Act before the mute</text>
         <text class="b0dX" x="616" y="204" style="fill:#FEE2E2">Re-tune or retrain now, not after</text>
         <rect x="24" y="276" width="14" height="14" rx="3" fill="#DC2626"/>
-        <text class="b0dN" x="46" y="288">Monitoring the detector's own precision is how you catch drift before the team stops trusting it.</text>
+        <text class="b0dN" x="46" y="306">Monitoring the detector's own precision is how you catch drift before the team stops trusting it.</text>
       </svg>
       <figcaption>🔍 Click to zoom - rolling precision sliding below the floor triggers a retrain</figcaption>
     </figure>
