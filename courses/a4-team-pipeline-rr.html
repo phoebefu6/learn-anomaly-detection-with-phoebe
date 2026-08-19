@@ -170,7 +170,79 @@
     </div>
     <p class="lede">The relay tells you the order; RACI tells you who owns each step. <strong>R</strong> does the work, <strong>A</strong> is accountable for the outcome, <strong>C</strong> is consulted. Notice the diagonal: accountability moves along the relay, and the data scientist stays consulted almost everywhere - because the threshold and the detector's health are theirs to defend.</p>
 
-    <table class="clean">
+    
+<figure class="zoomable">
+  <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A RACI grid showing five pipeline steps against four roles: the analyst is Responsible and Accountable for labeling history and shipping a baseline; the data scientist is Responsible and Accountable for building and tuning the detector and is Accountable for monitoring it; the ML engineer is Responsible and Accountable for streaming detection; and on-call is Responsible and Accountable for responding to alerts and Responsible for monitoring, with every other cell marked Consulted or not involved.">
+    <style>
+      .raciT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+      .raciH { font: 700 11px Inter, sans-serif; fill: #1F2937; }
+      .raciS { font: 600 11px Inter, sans-serif; fill: #1F2937; }
+      .raciSW { font: 600 11px Inter, sans-serif; fill: #FFFFFF; }
+      .raciN { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+    </style>
+    <rect x="0" y="0" width="880" height="340" fill="#FFFFFF"/>
+    <text class="raciT" x="40" y="24">The RACI grid: who is Accountable at each step</text>
+
+    <text class="raciH" x="290" y="52" text-anchor="middle">Analyst</text>
+    <text class="raciH" x="410" y="52" text-anchor="middle">Data Scientist</text>
+    <text class="raciH" x="530" y="52" text-anchor="middle">ML Eng/DevOps</text>
+    <text class="raciH" x="650" y="52" text-anchor="middle">On-call/Ops</text>
+
+    <text class="raciH" x="220" y="86" text-anchor="end">Label + baseline</text>
+    <rect x="240" y="62" width="100" height="34" fill="#DC2626"/>
+    <text class="raciSW" x="290" y="83" text-anchor="middle">R / A</text>
+    <rect x="360" y="62" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="410" y="83" text-anchor="middle">C</text>
+    <rect x="480" y="62" width="100" height="34" fill="#E5E7EB"/>
+    <text class="raciS" x="530" y="83" text-anchor="middle">-</text>
+    <rect x="600" y="62" width="100" height="34" fill="#E5E7EB"/>
+    <text class="raciS" x="650" y="83" text-anchor="middle">-</text>
+
+    <text class="raciH" x="220" y="128" text-anchor="end">Build, tune, threshold</text>
+    <rect x="240" y="104" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="290" y="125" text-anchor="middle">C</text>
+    <rect x="360" y="104" width="100" height="34" fill="#DC2626"/>
+    <text class="raciSW" x="410" y="125" text-anchor="middle">R / A</text>
+    <rect x="480" y="104" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="530" y="125" text-anchor="middle">C</text>
+    <rect x="600" y="104" width="100" height="34" fill="#E5E7EB"/>
+    <text class="raciS" x="650" y="125" text-anchor="middle">-</text>
+
+    <text class="raciH" x="220" y="170" text-anchor="end">Stream + route alerts</text>
+    <rect x="240" y="146" width="100" height="34" fill="#E5E7EB"/>
+    <text class="raciS" x="290" y="167" text-anchor="middle">-</text>
+    <rect x="360" y="146" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="410" y="167" text-anchor="middle">C</text>
+    <rect x="480" y="146" width="100" height="34" fill="#DC2626"/>
+    <text class="raciSW" x="530" y="167" text-anchor="middle">R / A</text>
+    <rect x="600" y="146" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="650" y="167" text-anchor="middle">C</text>
+
+    <text class="raciH" x="220" y="212" text-anchor="end">Respond (disposition)</text>
+    <rect x="240" y="188" width="100" height="34" fill="#E5E7EB"/>
+    <text class="raciS" x="290" y="209" text-anchor="middle">-</text>
+    <rect x="360" y="188" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="410" y="209" text-anchor="middle">C</text>
+    <rect x="480" y="188" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="530" y="209" text-anchor="middle">C</text>
+    <rect x="600" y="188" width="100" height="34" fill="#DC2626"/>
+    <text class="raciSW" x="650" y="209" text-anchor="middle">R / A</text>
+
+    <text class="raciH" x="220" y="254" text-anchor="end">Monitor the detector</text>
+    <rect x="240" y="230" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="290" y="251" text-anchor="middle">C</text>
+    <rect x="360" y="230" width="100" height="34" fill="#DC2626"/>
+    <text class="raciSW" x="410" y="251" text-anchor="middle">A</text>
+    <rect x="480" y="230" width="100" height="34" fill="#FECACA"/>
+    <text class="raciS" x="530" y="251" text-anchor="middle">C</text>
+    <rect x="600" y="230" width="100" height="34" fill="#F87171"/>
+    <text class="raciSW" x="650" y="251" text-anchor="middle">R</text>
+
+    <text class="raciN" x="40" y="302">Walk every row: each must have exactly one A. "Monitor the detector" is the row that usually goes orphaned.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - accountability walks the relay, but the DS stays consulted almost everywhere</figcaption>
+</figure>
+<table class="clean">
       <thead><tr><th>Step</th><th>Analyst</th><th>Data Scientist</th><th>ML Eng / DevOps</th><th>On-call / Ops</th></tr></thead>
       <tbody>
         <tr><td>Label history + ship baseline</td><td>R / A</td><td>C</td><td>-</td><td>-</td></tr>
@@ -210,6 +282,35 @@
     <div class="callout example">
       <span class="ex-pill">Real world</span>
       <p><strong>Lumen's on-call loop.</strong> An alert fires: sessions dropped hard at 2am. On-call checks, finds a CDN outage - real - and marks it. Next week a similar-looking dip fires; on-call finds a scheduled maintenance window - false alarm - and marks that too. Those two dispositions flow back to the data scientist, who now has labelled examples to retune the threshold and add a maintenance-window rule. Without that loop, the same false alarm fires every month until on-call mutes the whole channel - and then the next real outage goes unseen. The feedback loop is not a nice-to-have; it is what keeps the detector alive.</p>
+<figure class="zoomable">
+  <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A before and after comparison of two Lumen on-call alerts: a 2am session drop confirmed as a CDN outage was marked real and fed back to retune the threshold, while a similar-looking dip the next week was confirmed as scheduled maintenance and marked a false alarm, adding a maintenance-window rule to the detector.">
+    <style>
+      .loopT { font: 700 13px Inter, sans-serif; fill: #1F2937; }
+      .loopHA { font: 700 13px Inter, sans-serif; fill: #7F1D1D; }
+      .loopHB { font: 700 13px Inter, sans-serif; fill: #6B7280; }
+      .loopB { font: 400 12px Inter, sans-serif; fill: #1F2937; }
+      .loopN { font: 400 12px Inter, sans-serif; fill: #6B7280; }
+    </style>
+    <rect x="0" y="0" width="880" height="300" fill="#FFFFFF"/>
+    <text class="loopT" x="40" y="28">Two Lumen alerts, two dispositions, one better detector</text>
+
+    <rect x="40" y="50" width="390" height="180" rx="12" fill="#FEE2E2" stroke="#F87171" stroke-width="1.6"/>
+    <text class="loopHA" x="58" y="84">Week 1: real alert</text>
+    <text class="loopB" x="58" y="114">2am session drop fires</text>
+    <text class="loopB" x="58" y="134">On-call finds a CDN outage</text>
+    <text class="loopB" x="58" y="154">Marked real - retunes threshold</text>
+
+    <rect x="450" y="50" width="390" height="180" rx="12" fill="#E5E7EB" stroke="#6B7280" stroke-width="1.6"/>
+    <text class="loopHB" x="468" y="84">Week 2: false alarm</text>
+    <text class="loopB" x="468" y="114">Similar-looking dip fires</text>
+    <text class="loopB" x="468" y="134">On-call finds scheduled maint.</text>
+    <text class="loopB" x="468" y="154">Marked false - adds a rule</text>
+
+    <text class="loopN" x="40" y="276">Without the loop, the same false alarm fires monthly until on-call mutes the whole channel.</text>
+  </svg>
+  <figcaption>🔍 Click to zoom - every disposition, real or false, is training signal the detector needs</figcaption>
+</figure>
+
     </div>
 
     <details class="card">
